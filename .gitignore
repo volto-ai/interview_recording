@@ -1,0 +1,5 @@
+recordings/
+local_data/
+.venv/
+.specstory/
+.cursorindexingignore

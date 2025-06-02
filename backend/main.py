@@ -3,7 +3,7 @@ from flask_cors import CORS
 import os
 import uuid
 from datetime import datetime
-from models import InterviewConfigurator, InterviewResponse
+from models import InterviewConfigurator, InterviewResponse, Question
 from storage_utils import (
     save_interview_config, 
     get_interview_config, 
@@ -30,21 +30,48 @@ def create_campaign():
     try:
         print("\n=== CREATE CAMPAIGN ENDPOINT CALLED ===")
         data = request.json
-        print(f"Received data: {data}")
+        print(f"Received data (frontend payload): {data}")
         
+        generated_campaign_id = str(uuid.uuid4())
+        print(f"Generated campaign_id: {generated_campaign_id}")
         config = InterviewConfigurator(**data)
-        print(f"Successfully created InterviewConfigurator: {config}")
         
-        # Convert to dict for Firebase
         config_dict = config.model_dump()
+        
+        config_dict['campaign_id'] = generated_campaign_id
         config_dict['created_at'] = config_dict['created_at'].isoformat()
         
-        campaign_id = save_interview_config(config_dict)
-        print(f"Campaign saved with ID: {campaign_id}")
+        save_interview_config(config_dict) # save_interview_config returns the id, but we already have it
+        print(f"Campaign saved with ID: {generated_campaign_id}")
         
-        return jsonify({"campaign_id": campaign_id, "message": "Campaign created successfully"}), 201
+        # Return the generated campaign_id to the frontend
+        return jsonify({"campaign_id": generated_campaign_id, "message": "Campaign created successfully"}), 201
     except Exception as e:
         print(f"ERROR in create_campaign: {type(e).__name__}: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 400
+
+@app.route('/api/campaigns/<campaign_id>', methods=['PUT'])
+def update_campaign(campaign_id):
+    """Update an existing interview campaign"""
+    try:
+        print(f"\n=== UPDATE CAMPAIGN ENDPOINT CALLED for campaign_id: {campaign_id} ===")
+        data_from_request = request.json
+        print(f"Received data for update: {data_from_request}")
+
+        data_for_model = data_from_request.copy()
+        data_for_model['campaign_id'] = campaign_id # Override any campaign_id in body with ID from URL
+
+        config = InterviewConfigurator(**data_for_model)
+        config_dict_to_save = config.model_dump()
+
+        save_interview_config(config_dict_to_save) # Reuses save_interview_config for upsert
+        print(f"Campaign updated for ID: {campaign_id}")
+        
+        return jsonify({"campaign_id": campaign_id, "message": "Campaign updated successfully"}), 200
+    except Exception as e:
+        print(f"ERROR in update_campaign for ID {campaign_id}: {type(e).__name__}: {str(e)}")
         import traceback
         traceback.print_exc()
         return jsonify({"error": str(e)}), 400
@@ -52,10 +79,26 @@ def create_campaign():
 @app.route('/api/campaigns', methods=['GET'])
 def list_campaigns():
     """List all interview campaigns"""
+    print("\\n=== LIST CAMPAIGNS ENDPOINT CALLED (/api/campaigns GET) ===")
     try:
         campaigns = get_all_campaigns()
-        return jsonify({"campaigns": campaigns}), 200
+        print(f"Data from get_all_campaigns(): {campaigns}") # LOG 1: What data is returned
+        if not isinstance(campaigns, list):
+            print(f"WARNING: get_all_campaigns() did not return a list. Type: {type(campaigns)}")
+            # Potentially convert or handle if it's a known non-list type that's expected
+        
+        response_data = {"campaigns": campaigns}
+        print(f"Data being sent to jsonify: {response_data}") # LOG 2: What's passed to jsonify
+        
+        jsonified_response = jsonify(response_data)
+        print(f"JSONified response object: {jsonified_response}") # LOG 3: The response object itself
+        print(f"JSONified response data: {jsonified_response.get_data(as_text=True)}") # LOG 4: The actual data in the response
+        
+        return jsonified_response, 200
     except Exception as e:
+        print(f"ERROR in list_campaigns: {type(e).__name__}: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/campaigns/<campaign_id>', methods=['GET'])

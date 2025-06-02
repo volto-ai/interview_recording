@@ -25,10 +25,26 @@ interface Campaign {
     min?: number
     max?: number
   }>
-  screenoutQuestions: Array<{ id: string; text: string }>
+  screenoutQuestions: Array<{ id: string; text: string; options?: string[] }>
 }
 
 type InterviewStep = "landing" | "demographics" | "screenout" | "interview" | "completed"
+
+const BACKEND_URL = "http://localhost:8000"
+
+function mapBackendCampaignToCampaign(backend: any): Campaign {
+  return {
+    id: backend.id || backend.campaign_id,
+    researchName: backend.campaign_name || backend.researchName || "",
+    customerName: backend.quality_params?.customerName || "",
+    screenoutUrl: backend.screening_params?.screenoutUrl || "",
+    qualityUrl: backend.quality_params?.qualityUrl || "",
+    completedUrl: backend.quality_params?.completedUrl || "",
+    questions: backend.questions?.map((q: any) => ({ id: q.id, text: q.text })) || [],
+    demographicFields: backend.screening_params?.demographicFields || [],
+    screenoutQuestions: backend.screening_params?.screenoutQuestions || [],
+  }
+}
 
 export default function InterviewPage() {
   const params = useParams()
@@ -49,12 +65,10 @@ export default function InterviewPage() {
       }
       try {
         setIsLoading(true); // Ensure loading is true at the start of fetch
-        // Removed localStorage fetching logic
-        // console.log(`Fetching campaign /api/campaigns/${campaignId}`); // For debugging
-        const response = await fetch(`/api/campaigns/${campaignId}`);
+        const response = await fetch(`${BACKEND_URL}/api/campaigns/${campaignId}`);
         if (response.ok) {
           const data = await response.json();
-          setCampaign(data);
+          setCampaign(mapBackendCampaignToCampaign(data));
         } else {
           console.error("Campaign not found from API, status:", response.status);
           setCampaign(null); // Set campaign to null if not found or error

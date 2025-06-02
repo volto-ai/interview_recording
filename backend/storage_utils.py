@@ -5,35 +5,75 @@ from typing import Dict, Any
 from datetime import datetime
 import shutil
 
-# Create directories for local storage
+# Import Firestore repository and Enum
+from firestore_repository import FirestoreRepository, CollectionName
+
+try:
+    firestore_repo = FirestoreRepository()
+    print("FirestoreRepository initialized successfully in storage_utils.")
+except RuntimeError as e:
+    print(f"FATAL: Failed to initialize FirestoreRepository in storage_utils: {e}")
+    # Depending on the application's needs, you might want to exit or raise further
+    # For now, it will print the error, and subsequent Firestore operations will fail if repo is None.
+    firestore_repo = None 
+
+# Create directories for local storage (still used for responses and audio)
 DATA_DIR = os.path.join(os.path.dirname(__file__), 'local_data')
-INTERVIEW_CONFIGS_DIR = os.path.join(DATA_DIR, 'interview_configs')
+INTERVIEW_CONFIGS_DIR = os.path.join(DATA_DIR, 'interview_configs') # Keep for now, may be removed later
 INTERVIEW_RESPONSES_DIR = os.path.join(DATA_DIR, 'interview_responses')
 AUDIO_FILES_DIR = os.path.join(DATA_DIR, 'audio_files')
 
 # Create directories if they don't exist
+# Ensure INTERVIEW_CONFIGS_DIR is still created if other functions depend on it, or remove if fully deprecated
 for directory in [DATA_DIR, INTERVIEW_CONFIGS_DIR, INTERVIEW_RESPONSES_DIR, AUDIO_FILES_DIR]:
     os.makedirs(directory, exist_ok=True)
 
 def save_interview_config(config_data: Dict[str, Any]) -> str:
-    """Save interview configuration to local storage"""
-    campaign_id = config_data['campaign_id']
-    file_path = os.path.join(INTERVIEW_CONFIGS_DIR, f"{campaign_id}.json")
+    """Save interview configuration to Firestore."""
+    if not firestore_repo:
+        raise ConnectionError("FirestoreRepository is not initialized. Cannot save campaign.")
+
+    campaign_id = config_data.get('campaign_id')
+    if not campaign_id:
+        raise ValueError("campaign_id must be present in config_data")
+
+    try:
+        firestore_repo.create(CollectionName.CAMPAIGNS, campaign_id, config_data)
+        print(f"Saved interview config to Firestore, collection: {CollectionName.CAMPAIGNS.value}, id: {campaign_id}")
+        return campaign_id
+    except Exception as e:
+        print(f"Error saving interview config to Firestore: {e}")
+        raise RuntimeError(f"Failed to save campaign {campaign_id} to Firestore.") from e
+
+def get_all_campaigns() -> list:
+    """Get all interview campaigns from Firestore."""
+    if not firestore_repo:
+        raise ConnectionError("FirestoreRepository is not initialized. Cannot get campaigns.")
     
-    with open(file_path, 'w') as f:
-        json.dump(config_data, f, indent=2)
+    try:
+        campaigns = firestore_repo.list_all(CollectionName.CAMPAIGNS)
+        print(f"Retrieved {len(campaigns)} campaigns from Firestore collection: {CollectionName.CAMPAIGNS.value}")
+        return campaigns
+    except Exception as e:
+        print(f"Error retrieving campaigns from Firestore: {e}")
+        return []
     
-    print(f"Saved interview config to: {file_path}")
-    return campaign_id
 
 def get_interview_config(campaign_id: str) -> Dict[str, Any]:
-    """Retrieve interview configuration from local storage"""
-    file_path = os.path.join(INTERVIEW_CONFIGS_DIR, f"{campaign_id}.json")
+    """Retrieve interview configuration from Firestore"""
+    if not firestore_repo:
+        raise ConnectionError("FirestoreRepository is not initialized. Cannot get campaign.")
     
-    if os.path.exists(file_path):
-        with open(file_path, 'r') as f:
-            return json.load(f)
-    return None
+    try:
+        campaign = firestore_repo.read(CollectionName.CAMPAIGNS, campaign_id)
+        print(f"Retrieved campaign {campaign_id} from Firestore collection: {CollectionName.CAMPAIGNS.value}")
+        return campaign
+    except Exception as e:
+        print(f"Error retrieving campaign {campaign_id} from Firestore: {e}")
+        return None
+    
+    
+
 
 def save_interview_response(response_data: Dict[str, Any]) -> str:
     """Save interview response to local storage"""
@@ -63,20 +103,7 @@ def upload_audio(local_path: str, storage_path: str) -> str:
     print(f"Saved audio file to: {destination_path}")
     return public_url
 
-def get_all_campaigns() -> list:
-    """Get all interview campaigns from local storage"""
-    campaigns = []
-    
-    if os.path.exists(INTERVIEW_CONFIGS_DIR):
-        for filename in os.listdir(INTERVIEW_CONFIGS_DIR):
-            if filename.endswith('.json'):
-                file_path = os.path.join(INTERVIEW_CONFIGS_DIR, filename)
-                with open(file_path, 'r') as f:
-                    campaign = json.load(f)
-                    campaign['id'] = campaign.get('campaign_id', filename.replace('.json', ''))
-                    campaigns.append(campaign)
-    
-    return campaigns
+
 
 def get_campaign_responses(campaign_id: str) -> list:
     """Get all responses for a specific campaign from local storage"""
@@ -94,5 +121,5 @@ def get_campaign_responses(campaign_id: str) -> list:
     return responses
 
 # Initialize with a message
-print("Using local disk storage for data persistence")
+print("Using Firestore for data persistence")
 print(f"Data directory: {DATA_DIR}") 

@@ -85,3 +85,8 @@ interview_recording/
 ├── requirements.txt         # Python dependencies
 └── start.sh                # Startup script
 ```
+
+## Resources:
+DEV Stage
+ Firestore: https://console.firebase.google.com/u/0/project/dev-volto-interviews/firestore/databases/-default-/data
+ GCP Project: dev-volto-interviews 

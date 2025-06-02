@@ -1,6 +1,8 @@
 flask==3.0.0
-pydantic==2.5.3
+pydantic==2.7.1
 flask-cors==4.0.0
 requests==2.31.0
 sounddevice==0.4.7
 numpy==1.26.4
+firebase-admin
+typing-extensions==4.8.0

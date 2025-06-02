@@ -1,0 +1,37 @@
+import uuid
+from pydantic import BaseModel, Field
+from typing import List, Optional, Dict
+from datetime import datetime
+
+class Question(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), description="Unique identifier for the question")
+    text: str = Field(description="The text of the question")
+    time_limit_sec: int = Field(description="The time limit for the question in seconds")
+    order: int = Field(description="The order of the question in the campaign")
+
+class InterviewConfigurator(BaseModel):
+    campaign_id: str = Field(description="The unique identifier for the campaign")
+    campaign_name: str = Field(description="The name of the campaign")
+    questions: List[Question] = Field(description="The questions for the campaign")
+    quality_params: Optional[Dict] = Field(default_factory=dict, description="The quality parameters for the campaign")
+    screening_params: Optional[Dict] = Field(default_factory=dict, description="The screening parameters for the campaign")
+    created_at: datetime = Field(default_factory=datetime.now, description="The date and time the campaign was created")
+
+class Demographics(BaseModel):
+    age: int = Field(description="The age of the participant")
+    city: str = Field(description="The city of the participant")
+    income_range: str = Field(description="The income range of the participant")
+    occupation: str = Field(description="The occupation of the participant")
+
+class Recording(BaseModel):
+    question_id: str = Field(description="The unique identifier for the question")
+    file_path: str = Field(description="The path to the recording file")
+    duration_sec: float = Field(description="The duration of the recording in seconds")
+    created_at: datetime = Field(default_factory=datetime.now, description="The date and time the recording was created")
+
+class InterviewResponse(BaseModel):
+    campaign_id: str = Field(description="The unique identifier for the campaign")
+    participant_id: str = Field(description="The unique identifier for the participant")
+    demographics: Demographics = Field(description="The demographics of the participant")
+    recordings: Dict[str, List[Recording]] = Field(description="The recordings for the campaign")
+    submitted_at: datetime = Field(default_factory=datetime.now, description="The date and time the response was submitted")

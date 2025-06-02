@@ -11,22 +11,23 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 interface ScreenoutQuestion {
   id: string
   text: string
+  options?: string[]
 }
 
 interface ScreenoutFormProps {
   questions: ScreenoutQuestion[]
-  onSubmit: (data: Record<string, boolean>) => void
+  onSubmit: (data: Record<string, string>) => void
 }
 
 export default function ScreenoutForm({ questions, onSubmit }: ScreenoutFormProps) {
-  const [answers, setAnswers] = useState<Record<string, boolean>>({})
+  const [answers, setAnswers] = useState<Record<string, string>>({})
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     onSubmit(answers)
   }
 
-  const updateAnswer = (questionId: string, answer: boolean) => {
+  const updateAnswer = (questionId: string, answer: string) => {
     setAnswers((prev) => ({ ...prev, [questionId]: answer }))
   }
 
@@ -45,17 +46,15 @@ export default function ScreenoutForm({ questions, onSubmit }: ScreenoutFormProp
               <div key={question.id} className="space-y-3">
                 <Label className="text-base font-medium">{question.text}</Label>
                 <RadioGroup
-                  value={answers[question.id]?.toString()}
-                  onValueChange={(value) => updateAnswer(question.id, value === "true")}
+                  value={answers[question.id]}
+                  onValueChange={(value) => updateAnswer(question.id, value)}
                 >
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="true" id={`${question.id}-yes`} />
-                    <Label htmlFor={`${question.id}-yes`}>Yes</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="false" id={`${question.id}-no`} />
-                    <Label htmlFor={`${question.id}-no`}>No</Label>
-                  </div>
+                  {(question.options || ["Yes", "No"]).map((option) => (
+                    <div key={option} className="flex items-center space-x-2">
+                      <RadioGroupItem value={option} id={`${question.id}-${option}`} />
+                      <Label htmlFor={`${question.id}-${option}`}>{option}</Label>
+                    </div>
+                  ))}
                 </RadioGroup>
               </div>
             ))}

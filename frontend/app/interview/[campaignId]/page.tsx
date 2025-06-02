@@ -36,7 +36,7 @@ export default function InterviewPage() {
   const [campaign, setCampaign] = useState<Campaign | null>(null)
   const [currentStep, setCurrentStep] = useState<InterviewStep>("landing")
   const [demographicsData, setDemographicsData] = useState<Record<string, any>>({})
-  const [screenoutData, setScreenoutData] = useState<Record<string, boolean>>({})
+  const [screenoutData, setScreenoutData] = useState<Record<string, string>>({})
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
@@ -75,7 +75,7 @@ export default function InterviewPage() {
     setCurrentStep("screenout")
   }
 
-  const handleScreenoutSubmit = (data: Record<string, boolean>) => {
+  const handleScreenoutSubmit = (data: Record<string, string>) => {
     setScreenoutData(data)
 
     // Check if participant should be screened out

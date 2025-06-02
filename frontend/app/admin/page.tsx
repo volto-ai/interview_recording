@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
-import { Plus, Trash2, Copy, Sparkles } from "lucide-react"
+import { Plus, Trash2, Copy, Sparkles, ChevronDown, ChevronUp } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
 interface Question {
@@ -26,6 +26,7 @@ interface DemographicField {
 interface ScreenoutQuestion {
   id: string
   text: string
+  options?: string[]
 }
 
 interface Campaign {
@@ -50,10 +51,22 @@ export default function AdminPage() {
   const [completedUrl, setCompletedUrl] = useState("")
   const [questions, setQuestions] = useState<Question[]>([{ id: "1", text: "" }])
   const [demographicFields, setDemographicFields] = useState<DemographicField[]>([
-    { id: "1", label: "Age", type: "slider", min: 16, max: 100 },
-    { id: "2", label: "Gender", type: "select", options: ["Male", "Female", "Other"] },
+    { id: "1", label: "Gender", type: "select", options: ["Male", "Female", "Diverse"] },
+    { id: "2", label: "Occupation", type: "text" },
+    { id: "3", label: "Income Range", type: "select", options: [
+      "Under €25,000",
+      "€25,000 - €49,999",
+      "€50,000 - €74,999",
+      "€75,000 - €99,999",
+      "€100,000 - €149,999",
+      "€150,000+"
+    ] },
+    { id: "4", label: "Location", type: "text" },
   ])
-  const [screenoutQuestions, setScreenoutQuestions] = useState<ScreenoutQuestion[]>([{ id: "1", text: "" }])
+  const [demographicsOpen, setDemographicsOpen] = useState(false)
+  const [screenoutQuestions, setScreenoutQuestions] = useState<ScreenoutQuestion[]>([
+    { id: "1", text: "", options: ["Yes", "No"] }
+  ])
   const [generatedUrl, setGeneratedUrl] = useState("")
   const [isLoading, setIsLoading] = useState(false)
 
@@ -89,7 +102,7 @@ export default function AdminPage() {
 
   const addScreenoutQuestion = () => {
     const newId = (screenoutQuestions.length + 1).toString()
-    setScreenoutQuestions([...screenoutQuestions, { id: newId, text: "" }])
+    setScreenoutQuestions([...screenoutQuestions, { id: newId, text: "", options: ["Yes", "No"] }])
   }
 
   const removeScreenoutQuestion = (id: string) => {
@@ -100,6 +113,12 @@ export default function AdminPage() {
 
   const updateScreenoutQuestion = (id: string, text: string) => {
     setScreenoutQuestions(screenoutQuestions.map((q) => (q.id === id ? { ...q, text } : q)))
+  }
+
+  const updateScreenoutQuestionOptions = (id: string, optionsString: string) => {
+    setScreenoutQuestions(screenoutQuestions.map((q) =>
+      q.id === id ? { ...q, options: optionsString.split(",").map(opt => opt.trim()) } : q
+    ))
   }
 
   const generateCampaign = async () => {
@@ -242,91 +261,96 @@ export default function AdminPage() {
           </CardContent>
         </Card>
 
-        {/* Demographics Fields */}
+        {/* Demographics Fields (Collapsible) */}
         <Card>
-          <CardHeader>
-            <CardTitle>Demographics Fields</CardTitle>
-            <CardDescription>Define what demographic information to collect</CardDescription>
+          <CardHeader onClick={() => setDemographicsOpen((open) => !open)} className="cursor-pointer flex flex-row items-center justify-between">
+            <div>
+              <CardTitle>Demographics Fields</CardTitle>
+              <CardDescription>Define what demographic information to collect</CardDescription>
+            </div>
+            <span>{demographicsOpen ? <ChevronUp /> : <ChevronDown />}</span>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {demographicFields.map((field) => (
-              <div key={field.id} className="flex gap-4 items-end">
-                <div className="flex-1">
-                  <Label>Field Label</Label>
-                  <Input
-                    value={field.label}
-                    onChange={(e) => updateDemographicField(field.id, { label: e.target.value })}
-                    placeholder="Field label"
-                  />
-                </div>
-                <div className="w-32">
-                  <Label>Type</Label>
-                  <select
-                    className="w-full p-2 border rounded"
-                    value={field.type}
-                    onChange={(e) => updateDemographicField(field.id, { type: e.target.value as any })}
-                  >
-                    <option value="text">Text</option>
-                    <option value="select">Select</option>
-                    <option value="slider">Slider</option>
-                  </select>
-                </div>
-                {field.type === "select" && (
+          {demographicsOpen && (
+            <CardContent className="space-y-4">
+              {demographicFields.map((field) => (
+                <div key={field.id} className="flex gap-4 items-end">
                   <div className="flex-1">
-                    <Label>Options (comma separated)</Label>
+                    <Label>Field Label</Label>
                     <Input
-                      value={field.options?.join(", ") || ""}
-                      onChange={(e) =>
-                        updateDemographicField(field.id, {
-                          options: e.target.value.split(",").map((s) => s.trim()),
-                        })
-                      }
-                      placeholder="Option 1, Option 2, Option 3"
+                      value={field.label}
+                      onChange={(e) => updateDemographicField(field.id, { label: e.target.value })}
+                      placeholder="Field label"
                     />
                   </div>
-                )}
-                {field.type === "slider" && (
-                  <>
-                    <div className="w-20">
-                      <Label>Min</Label>
+                  <div className="w-32">
+                    <Label>Type</Label>
+                    <select
+                      className="w-full p-2 border rounded"
+                      value={field.type}
+                      onChange={(e) => updateDemographicField(field.id, { type: e.target.value as any })}
+                    >
+                      <option value="text">Text</option>
+                      <option value="select">Select</option>
+                      <option value="slider">Slider</option>
+                    </select>
+                  </div>
+                  {field.type === "select" && (
+                    <div className="flex-1">
+                      <Label>Options (comma separated)</Label>
                       <Input
-                        type="number"
-                        value={field.min || 0}
-                        onChange={(e) => updateDemographicField(field.id, { min: Number.parseInt(e.target.value) })}
+                        value={field.options?.join(", ") || ""}
+                        onChange={(e) =>
+                          updateDemographicField(field.id, {
+                            options: e.target.value.split(",").map((s) => s.trim()),
+                          })
+                        }
+                        placeholder="Option 1, Option 2, Option 3"
                       />
                     </div>
-                    <div className="w-20">
-                      <Label>Max</Label>
-                      <Input
-                        type="number"
-                        value={field.max || 100}
-                        onChange={(e) => updateDemographicField(field.id, { max: Number.parseInt(e.target.value) })}
-                      />
-                    </div>
-                  </>
-                )}
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => removeDemographicField(field.id)}
-                  disabled={demographicFields.length === 1}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            ))}
-            <Button variant="outline" onClick={addDemographicField}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Demographic Field
-            </Button>
-          </CardContent>
+                  )}
+                  {field.type === "slider" && (
+                    <>
+                      <div className="w-20">
+                        <Label>Min</Label>
+                        <Input
+                          type="number"
+                          value={field.min || 0}
+                          onChange={(e) => updateDemographicField(field.id, { min: Number.parseInt(e.target.value) })}
+                        />
+                      </div>
+                      <div className="w-20">
+                        <Label>Max</Label>
+                        <Input
+                          type="number"
+                          value={field.max || 100}
+                          onChange={(e) => updateDemographicField(field.id, { max: Number.parseInt(e.target.value) })}
+                        />
+                      </div>
+                    </>
+                  )}
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => removeDemographicField(field.id)}
+                    disabled={demographicFields.length === 1}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+              <Button variant="outline" onClick={addDemographicField}>
+                <Plus className="h-4 w-4 mr-2" />
+                Add Demographic Field
+              </Button>
+            </CardContent>
+          )}
         </Card>
 
-        {/* Screenout Questions */}
+        {/* Screenout Questions (as select with options) */}
         <Card>
           <CardHeader>
             <CardTitle>Screenout Questions</CardTitle>
-            <CardDescription>Yes/No questions to screen participants</CardDescription>
+            <CardDescription>Screen participants with select questions and custom options</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {screenoutQuestions.map((question) => (
@@ -337,6 +361,14 @@ export default function AdminPage() {
                     value={question.text}
                     onChange={(e) => updateScreenoutQuestion(question.id, e.target.value)}
                     placeholder="Enter screenout question"
+                  />
+                </div>
+                <div className="flex-1">
+                  <Label>Options (comma separated)</Label>
+                  <Input
+                    value={question.options?.join(", ") || ""}
+                    onChange={(e) => updateScreenoutQuestionOptions(question.id, e.target.value)}
+                    placeholder="Option 1, Option 2, Option 3"
                   />
                 </div>
                 <Button

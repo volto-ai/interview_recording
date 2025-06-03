@@ -29,6 +29,7 @@ interface ScreenoutQuestion {
   id: string
   text: string
   options?: string[]
+  screenoutValue?: string
 }
 
 interface BackendQuestion {
@@ -115,7 +116,8 @@ function mapFormStateToBackendPayload(form: {
       screenoutQuestions: form.screenoutQuestions.filter((q) => q.text.trim()).map(q => ({
         id: q.id,
         text: q.text,
-        options: q.options
+        options: q.options,
+        screenoutValue: q.screenoutValue,
       })),
     }
   }
@@ -226,7 +228,10 @@ export default function AdminPage() {
 
   const addScreenoutQuestion = () => {
     const newId = (screenoutQuestions.length + 1).toString()
-    setScreenoutQuestions([...screenoutQuestions, { id: newId, text: "", options: ["Yes", "No"] }])
+    setScreenoutQuestions([
+      ...screenoutQuestions,
+      { id: newId, text: "", options: ["Yes", "No"], screenoutValue: undefined },
+    ])
   }
 
   const removeScreenoutQuestion = (id: string) => {
@@ -241,7 +246,21 @@ export default function AdminPage() {
 
   const updateScreenoutQuestionOptions = (id: string, optionsString: string) => {
     setScreenoutQuestions(screenoutQuestions.map((q) =>
-      q.id === id ? { ...q, options: optionsString.split(",").map(opt => opt.trim()) } : q
+      q.id === id
+        ? {
+            ...q,
+            options: optionsString.split(",").map((opt) => opt.trim()),
+            screenoutValue: undefined,
+          }
+        : q
+    ))
+  }
+
+  const updateScreenoutQuestionScreenoutValue = (id: string, value: string) => {
+    setScreenoutQuestions(screenoutQuestions.map((q) =>
+      q.id === id
+        ? { ...q, screenoutValue: value }
+        : q
     ))
   }
 
@@ -538,6 +557,21 @@ export default function AdminPage() {
                     onChange={(e) => updateScreenoutQuestionOptions(question.id, e.target.value)}
                     placeholder="Option 1, Option 2, Option 3"
                   />
+                  {question.options && question.options.length > 0 && (
+                    <div className="mt-2">
+                      <Label className="text-xs">Screen out on answer</Label>
+                      <select
+                        className="w-full p-2 border rounded text-xs mt-1"
+                        value={question.screenoutValue || ""}
+                        onChange={(e) => updateScreenoutQuestionScreenoutValue(question.id, e.target.value)}
+                      >
+                        <option value="">(None)</option>
+                        {question.options.map((opt) => (
+                          <option key={opt} value={opt}>{opt}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
                 </div>
                 <Button
                   variant="outline"

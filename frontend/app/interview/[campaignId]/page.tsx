@@ -25,7 +25,7 @@ interface Campaign {
     min?: number
     max?: number
   }>
-  screenoutQuestions: Array<{ id: string; text: string; options?: string[] }>
+  screenoutQuestions: Array<{ id: string; text: string; options?: string[]; screenoutValue?: string }>
 }
 
 type InterviewStep = "landing" | "demographics" | "screenout" | "interview" | "completed"
@@ -92,9 +92,12 @@ export default function InterviewPage() {
   const handleScreenoutSubmit = (data: Record<string, string>) => {
     setScreenoutData(data)
 
-    // Check if participant should be screened out
-    const hasNoAnswers = Object.values(data).some((answer) => !answer)
-    if (hasNoAnswers && campaign?.screenoutUrl) {
+    // Check if any answer matches the screenout value
+    const isScreenedOut = campaign?.screenoutQuestions.some((q) =>
+      q.screenoutValue && data[q.id] === q.screenoutValue
+    )
+
+    if (isScreenedOut && campaign?.screenoutUrl) {
       window.location.href = campaign.screenoutUrl
       return
     }

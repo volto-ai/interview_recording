@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useParams } from "next/navigation"
+import { useParams, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Clock, HelpCircle, Globe } from "lucide-react"
@@ -48,7 +48,9 @@ function mapBackendCampaignToCampaign(backend: any): Campaign {
 
 export default function InterviewPage() {
   const params = useParams()
+  const searchParams = useSearchParams()
   const campaignId = params.campaignId as string
+  const participantId = searchParams.get('uid')
   const [campaign, setCampaign] = useState<Campaign | null>(null)
   const [currentStep, setCurrentStep] = useState<InterviewStep>("landing")
   const [demographicsData, setDemographicsData] = useState<Record<string, any>>({})
@@ -57,39 +59,38 @@ export default function InterviewPage() {
 
   useEffect(() => {
     const fetchCampaign = async () => {
-      if (!campaignId) {
+      if (!campaignId || !participantId) {
         setIsLoading(false);
-        console.error("Campaign ID is missing.");
-        // Optionally set an error state to display to the user
+        console.error("Campaign ID or Participant ID is missing.");
         return;
       }
       try {
-        setIsLoading(true); // Ensure loading is true at the start of fetch
+        setIsLoading(true);
         const response = await fetch(`${BACKEND_URL}/api/campaigns/${campaignId}`);
         if (response.ok) {
           const data = await response.json();
           setCampaign(mapBackendCampaignToCampaign(data));
         } else {
           console.error("Campaign not found from API, status:", response.status);
-          setCampaign(null); // Set campaign to null if not found or error
+          setCampaign(null);
         }
       } catch (error) {
         console.error("Error fetching campaign from API:", error);
-        setCampaign(null); // Set campaign to null on fetch error
+        setCampaign(null);
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchCampaign();
-  }, [campaignId]);
+  }, [campaignId, participantId]);
 
   const handleDemographicsSubmit = (data: Record<string, any>) => {
     setDemographicsData(data)
     setCurrentStep("screenout")
   }
 
-  const handleScreenoutSubmit = (data: Record<string, string>) => {
+  const handleScreenoutSubmit = async (data: Record<string, string>) => {
     setScreenoutData(data)
 
     // Check if any answer matches the screenout value
@@ -98,6 +99,34 @@ export default function InterviewPage() {
     )
 
     if (isScreenedOut && campaign?.screenoutUrl) {
+      if (!participantId) {
+        console.error('Participant ID is missing from URL')
+        return
+      }
+
+      try {
+        // Call screenout endpoint
+        const response = await fetch(`${BACKEND_URL}/api/screenout`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            campaign_id: campaign.id,
+            participant_id: participantId,
+            demographics: demographicsData,
+            screenout_url: campaign.screenoutUrl
+          })
+        })
+
+        if (!response.ok) {
+          console.error('Failed to record screenout:', await response.text())
+        }
+      } catch (error) {
+        console.error('Error recording screenout:', error)
+      }
+
+      // Redirect to screenout URL
       window.location.href = campaign.screenoutUrl
       return
     }
@@ -124,13 +153,13 @@ export default function InterviewPage() {
     )
   }
 
-  if (!campaign) {
+  if (!campaign || !participantId) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Card className="w-full max-w-md">
           <CardHeader>
-            <CardTitle>Interview Not Found</CardTitle>
-            <CardDescription>The interview you're looking for doesn't exist or has been removed.</CardDescription>
+            <CardTitle>Invalid Interview Link</CardTitle>
+            <CardDescription>The interview link is missing required parameters.</CardDescription>
           </CardHeader>
         </Card>
       </div>

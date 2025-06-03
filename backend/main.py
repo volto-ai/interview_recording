@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, send_file
+from flask import Flask, request, jsonify, send_file, redirect
 from flask_cors import CORS
 import os
 import uuid
@@ -192,6 +192,40 @@ def serve_audio(filename):
         return jsonify({"error": "Audio file not found"}), 404
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+@app.route('/api/screenout', methods=['POST'])
+def handle_screenout():
+    """Handle participant screenout"""
+    try:
+        data = request.json
+        campaign_id = data.get('campaign_id')
+        participant_id = data.get('participant_id')
+        demographics = data.get('demographics', {})
+        screenout_url = data.get('screenout_url')
+        
+        if not all([campaign_id, participant_id]):
+            return jsonify({"error": "Missing required fields"}), 400
+            
+        # Create screenout response
+        screenout_data = {
+            "campaign_id": campaign_id,
+            "participant_id": participant_id,
+            "demographics": demographics,
+            "screenout": True,
+            "submitted_at": datetime.now().isoformat()
+        }
+        
+        # Save to storage
+        save_interview_response(screenout_data)
+        
+        # Redirect to screenout URL
+        if screenout_url:
+            return redirect(screenout_url)
+        else:
+            return jsonify({"error": "No screenout URL provided"}), 400
+            
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
 
 if __name__ == '__main__':
     app.run(debug=True, port=8000) 

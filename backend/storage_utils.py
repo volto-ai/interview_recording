@@ -8,6 +8,14 @@ import shutil
 # Import Firestore repository and Enum
 from firestore_repository import FirestoreRepository, CollectionName
 
+# Import Firebase Storage
+try:
+    from firebase_admin import storage
+    firebase_storage_available = True
+except ImportError:
+    firebase_storage_available = False
+    print("Warning: Firebase Storage not available")
+
 try:
     firestore_repo = FirestoreRepository()
     print("FirestoreRepository initialized successfully in storage_utils.")
@@ -90,18 +98,47 @@ def save_interview_response(response_data: Dict[str, Any]) -> str:
     return response_id
 
 def upload_audio(local_path: str, storage_path: str) -> str:
-    """Copy audio file to local storage and return the path"""
-    # Extract filename from storage_path
-    filename = os.path.basename(storage_path)
-    destination_path = os.path.join(AUDIO_FILES_DIR, filename)
+    """Upload audio file to Firebase Storage and return the public URL"""
+    if not firebase_storage_available:
+        print("Firebase Storage not available, falling back to local storage")
+        # Fallback to local storage
+        filename = os.path.basename(storage_path)
+        destination_path = os.path.join(AUDIO_FILES_DIR, filename)
+        shutil.copy2(local_path, destination_path)
+        public_url = f"/api/audio/{filename}"
+        print(f"Saved audio file to local storage: {destination_path}")
+        return public_url
     
-    # Copy the file
-    shutil.copy2(local_path, destination_path)
-    
-    # Return a URL-like path (in a real app, this would be served by the backend)
-    public_url = f"/api/audio/{filename}"
-    print(f"Saved audio file to: {destination_path}")
-    return public_url
+    try:
+        # Get Firebase Storage bucket
+        bucket = storage.bucket()
+        
+        # Create blob with the specified path
+        blob = bucket.blob(storage_path)
+        
+        # Upload the file
+        with open(local_path, 'rb') as audio_file:
+            blob.upload_from_file(audio_file, content_type='audio/wav')
+        
+        # Get the public URL (don't use make_public() with uniform bucket-level access)
+        public_url = f"https://storage.googleapis.com/{bucket.name}/{storage_path}"
+        
+        print(f"Successfully uploaded audio file to Firebase Storage: {storage_path}")
+        print(f"Public URL: {public_url}")
+        
+        return public_url
+        
+    except Exception as e:
+        print(f"Error uploading to Firebase Storage: {e}")
+        print("Falling back to local storage")
+        
+        # Fallback to local storage if Firebase upload fails
+        filename = os.path.basename(storage_path)
+        destination_path = os.path.join(AUDIO_FILES_DIR, filename)
+        shutil.copy2(local_path, destination_path)
+        public_url = f"/api/audio/{filename}"
+        print(f"Saved audio file to local storage: {destination_path}")
+        return public_url
 
 
 

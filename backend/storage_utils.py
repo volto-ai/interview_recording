@@ -14,7 +14,7 @@ try:
     firebase_storage_available = True
 except ImportError:
     firebase_storage_available = False
-    print("Warning: Firebase Storage not available")
+    raise RuntimeError("Warning: Firebase Storage not available")
 
 try:
     firestore_repo = FirestoreRepository()
@@ -99,16 +99,6 @@ def save_interview_response(response_data: Dict[str, Any]) -> str:
 
 def upload_audio(local_path: str, storage_path: str) -> str:
     """Upload audio file to Firebase Storage and return the public URL"""
-    if not firebase_storage_available:
-        print("Firebase Storage not available, falling back to local storage")
-        # Fallback to local storage
-        filename = os.path.basename(storage_path)
-        destination_path = os.path.join(AUDIO_FILES_DIR, filename)
-        shutil.copy2(local_path, destination_path)
-        public_url = f"/api/audio/{filename}"
-        print(f"Saved audio file to local storage: {destination_path}")
-        return public_url
-    
     try:
         # Get Firebase Storage bucket
         bucket = storage.bucket()
@@ -120,7 +110,6 @@ def upload_audio(local_path: str, storage_path: str) -> str:
         with open(local_path, 'rb') as audio_file:
             blob.upload_from_file(audio_file, content_type='audio/wav')
         
-        # Get the public URL (don't use make_public() with uniform bucket-level access)
         public_url = f"https://storage.googleapis.com/{bucket.name}/{storage_path}"
         
         print(f"Successfully uploaded audio file to Firebase Storage: {storage_path}")
@@ -130,15 +119,7 @@ def upload_audio(local_path: str, storage_path: str) -> str:
         
     except Exception as e:
         print(f"Error uploading to Firebase Storage: {e}")
-        print("Falling back to local storage")
-        
-        # Fallback to local storage if Firebase upload fails
-        filename = os.path.basename(storage_path)
-        destination_path = os.path.join(AUDIO_FILES_DIR, filename)
-        shutil.copy2(local_path, destination_path)
-        public_url = f"/api/audio/{filename}"
-        print(f"Saved audio file to local storage: {destination_path}")
-        return public_url
+        return None
 
 
 

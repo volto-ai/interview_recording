@@ -37,6 +37,8 @@ export default function VoiceInterview({ questions, campaignId, onComplete }: Vo
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'success' | 'error'>('idle')
   const [recordings, setRecordings] = useState<Recording[]>([])
   const [participantId] = useState(() => `participant_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`)
+  const [hasJustRecorded, setHasJustRecorded] = useState(false)
+  const [isFirstRecordingForQuestion, setIsFirstRecordingForQuestion] = useState(false)
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
@@ -99,6 +101,11 @@ export default function VoiceInterview({ questions, campaignId, onComplete }: Vo
         
         setRecordings(prev => [...prev.filter(r => r.questionId !== questionId), newRecording])
         setUploadStatus('success')
+        setHasJustRecorded(true)
+        
+        // Check if this was the first recording for this question
+        const hadPreviousRecording = recordings.some(r => r.questionId === questionId)
+        setIsFirstRecordingForQuestion(!hadPreviousRecording)
         
         // Auto-hide success message after 2 seconds
         setTimeout(() => setUploadStatus('idle'), 2000)
@@ -183,6 +190,8 @@ export default function VoiceInterview({ questions, campaignId, onComplete }: Vo
       setCurrentQuestionIndex((prev) => prev + 1)
       setRecordingTime(0)
       setUploadStatus('idle')
+      setHasJustRecorded(false)
+      setIsFirstRecordingForQuestion(false)
     } else {
       onComplete()
     }
@@ -253,7 +262,15 @@ export default function VoiceInterview({ questions, campaignId, onComplete }: Vo
           {currentQuestionRecording && (
             <div className="flex items-center justify-center space-x-2 text-green-600">
               <CheckCircle className="h-5 w-5" />
-              <span>Diese Frage wurde bereits beantwortet</span>
+              <span>
+                {hasJustRecorded ? (
+                  isFirstRecordingForQuestion ? 
+                    "Die Antwort wurde übermittelt" :
+                    "Diese Frage wurde bereits beantwortet (neue Aufnahme wurde übermittelt)"
+                ) : (
+                  "Diese Frage wurde bereits beantwortet"
+                )}
+              </span>
             </div>
           )}
 
@@ -282,6 +299,8 @@ export default function VoiceInterview({ questions, campaignId, onComplete }: Vo
               onClick={() => {
                 setCurrentQuestionIndex(prev => prev - 1)
                 setUploadStatus('idle')
+                setHasJustRecorded(false)
+                setIsFirstRecordingForQuestion(false)
               }}
             >
               Previous

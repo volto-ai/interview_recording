@@ -127,8 +127,8 @@ def upload_recording():
         if not all([campaign_id, participant_id, question_id]):
             return jsonify({"error": "Missing required fields"}), 400
         
-        # Generate unique filename
-        filename = f"{uuid.uuid4()}.wav"
+        # Generate unique filename (from timestamp)
+        filename = f"{datetime.now().strftime('%Y%m%d%H%M%S')}.wav"
         local_path = os.path.join(UPLOAD_FOLDER, filename)
         audio_file.save(local_path)
         

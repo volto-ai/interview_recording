@@ -199,7 +199,7 @@ export default function InterviewPage() {
   }
 
   if (currentStep === "interview") {
-    return <VoiceInterview questions={campaign.questions} onComplete={handleInterviewComplete} />
+    return <VoiceInterview questions={campaign.questions} campaignId={campaignId} onComplete={handleInterviewComplete} />
   }
 
   return (

@@ -84,18 +84,23 @@ def get_interview_config(campaign_id: str) -> Dict[str, Any]:
 
 
 def save_interview_response(response_data: Dict[str, Any]) -> str:
-    """Save interview response to local storage"""
-    response_id = str(uuid.uuid4())
-    response_data['id'] = response_id
-    response_data['created_at'] = datetime.now().isoformat()
-    
-    file_path = os.path.join(INTERVIEW_RESPONSES_DIR, f"{response_id}.json")
-    
-    with open(file_path, 'w') as f:
-        json.dump(response_data, f, indent=2)
-    
-    print(f"Saved interview response to: {file_path}")
-    return response_id
+    """Save interview response to Firestore"""
+    if not firestore_repo:
+        raise ConnectionError("FirestoreRepository is not initialized. Cannot save interview response.")
+
+    try:
+        # Generate a unique ID if not provided
+        response_id = response_data.get('id', str(uuid.uuid4()))
+        response_data['id'] = response_id
+        response_data['submitted_at'] = datetime.now().isoformat()
+        
+        # Save to Firestore
+        firestore_repo.create(CollectionName.INTERVIEWS, response_id, response_data)
+        print(f"Saved interview response to Firestore, collection: {CollectionName.INTERVIEWS.value}, id: {response_id}")
+        return response_id
+    except Exception as e:
+        print(f"Error saving interview response to Firestore: {e}")
+        raise RuntimeError(f"Failed to save interview response to Firestore.") from e
 
 def upload_audio(local_path: str, storage_path: str) -> str:
     """Upload audio file to Firebase Storage and return the public URL"""

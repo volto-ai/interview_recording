@@ -5,13 +5,14 @@ import { Label } from "@/components/ui/label"
 import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Mic, MicOff, Upload, CheckCircle, AlertCircle } from "lucide-react"
+import { Mic, MicOff, Upload, CheckCircle, AlertCircle, Clock } from "lucide-react"
 
 const BACKEND_URL = "http://localhost:8000"
 
 interface Question {
   id: string
   text: string
+  time_limit_sec: number
 }
 
 interface VoiceInterviewProps {
@@ -32,6 +33,7 @@ export default function VoiceInterview({ questions, campaignId, onComplete }: Vo
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
   const [isRecording, setIsRecording] = useState(false)
   const [recordingTime, setRecordingTime] = useState(0)
+  const [timeRemaining, setTimeRemaining] = useState(0)
   const [waveformData, setWaveformData] = useState<number[]>([])
   const [isUploading, setIsUploading] = useState(false)
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'success' | 'error'>('idle')
@@ -43,6 +45,7 @@ export default function VoiceInterview({ questions, campaignId, onComplete }: Vo
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const countdownTimerRef = useRef<NodeJS.Timeout | null>(null)
   const waveformIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const chunksRef = useRef<BlobPart[]>([])
 
@@ -158,11 +161,26 @@ export default function VoiceInterview({ questions, campaignId, onComplete }: Vo
       mediaRecorder.start()
       setIsRecording(true)
       setRecordingTime(0)
+      setTimeRemaining(currentQuestion.time_limit_sec)
       setUploadStatus('idle')
 
+      // Clear any existing timers
       if (recordingTimerRef.current) clearInterval(recordingTimerRef.current)
+      if (countdownTimerRef.current) clearInterval(countdownTimerRef.current)
+      
+      // Start recording time counter
       recordingTimerRef.current = setInterval(() => {
         setRecordingTime((prev) => prev + 1)
+      }, 1000)
+
+      // Start countdown timer
+      countdownTimerRef.current = setInterval(() => {
+        setTimeRemaining((prev) => {
+          if (prev <= 1) {
+            return 0
+          }
+          return prev - 1
+        })
       }, 1000)
     } catch (error) {
       console.error("Error starting recording:", error)
@@ -178,6 +196,10 @@ export default function VoiceInterview({ questions, campaignId, onComplete }: Vo
         clearInterval(recordingTimerRef.current)
       }
 
+      if (countdownTimerRef.current) {
+        clearInterval(countdownTimerRef.current)
+      }
+
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((track) => track.stop())
       }
@@ -189,6 +211,7 @@ export default function VoiceInterview({ questions, campaignId, onComplete }: Vo
     if (currentQuestionIndex < questions.length - 1) {
       setCurrentQuestionIndex((prev) => prev + 1)
       setRecordingTime(0)
+      setTimeRemaining(0)
       setUploadStatus('idle')
       setHasJustRecorded(false)
       setIsFirstRecordingForQuestion(false)
@@ -207,6 +230,22 @@ export default function VoiceInterview({ questions, campaignId, onComplete }: Vo
   const currentQuestionRecording = recordings.find(r => r.questionId === currentQuestion.id)
   const canProceed = currentQuestionRecording?.uploaded || false
 
+  // Cleanup timers on unmount
+  useEffect(() => {
+    return () => {
+      if (recordingTimerRef.current) clearInterval(recordingTimerRef.current)
+      if (countdownTimerRef.current) clearInterval(countdownTimerRef.current)
+      if (waveformIntervalRef.current) clearInterval(waveformIntervalRef.current)
+    }
+  }, [])
+
+  // Auto-stop recording when countdown reaches zero
+  useEffect(() => {
+    if (isRecording && timeRemaining === 0) {
+      stopRecording()
+    }
+  }, [timeRemaining, isRecording])
+
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <Card className="w-full max-w-2xl">
@@ -215,8 +254,22 @@ export default function VoiceInterview({ questions, campaignId, onComplete }: Vo
             Question {currentQuestionIndex + 1} of {questions.length}
           </CardTitle>
           <CardDescription className="text-lg">{currentQuestion.text}</CardDescription>
+          <div className="flex items-center gap-2 text-sm text-gray-600 mt-2">
+            <Clock className="h-4 w-4" />
+            <span>Zeit-Limit: {formatTime(currentQuestion.time_limit_sec)}</span>
+          </div>
         </CardHeader>
         <CardContent className="text-center space-y-8">
+          {/* Countdown Timer */}
+          {isRecording && (
+            <div className="flex flex-col items-center space-y-2">
+              <div className={`text-3xl font-bold ${timeRemaining <= 10 ? 'text-red-500 animate-pulse' : 'text-blue-600'}`}>
+                {formatTime(timeRemaining)}
+              </div>
+              <div className="text-sm text-gray-500">Zeit verbleibt</div>
+            </div>
+          )}
+
           {/* Recording Button */}
           <div className="flex flex-col items-center space-y-4">
             <Button
@@ -230,7 +283,7 @@ export default function VoiceInterview({ questions, campaignId, onComplete }: Vo
             </Button>
 
             <div className="text-lg font-medium">
-              {isRecording ? `Aufnahme läuft: ${formatTime(recordingTime)}` : 'Bereit für Aufnahme'}
+              {isRecording ? 'Aufnahme läuft' : 'Bereit für Aufnahme'}
             </div>
           </div>
 
@@ -301,6 +354,7 @@ export default function VoiceInterview({ questions, campaignId, onComplete }: Vo
                 setUploadStatus('idle')
                 setHasJustRecorded(false)
                 setIsFirstRecordingForQuestion(false)
+                setTimeRemaining(0)
               }}
             >
               Previous

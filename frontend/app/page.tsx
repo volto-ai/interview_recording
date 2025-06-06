@@ -3,20 +3,22 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Settings, Edit } from "lucide-react"
+import { Settings, Edit, PlusCircle } from "lucide-react"
 import { useState, useEffect } from "react"
 
-// Define an interface for the campaign data
-interface Campaign {
-  id: string;
-  name: string;
-  // Add other campaign properties if needed
+const BACKEND_URL = "http://localhost:8000"; // Define backend URL
+
+// Simplified campaign type for the homepage dropdown
+interface HomePageCampaign {
+  campaign_id: string;
+  campaign_name: string;
+  // Add any other fields if needed for display, though only id and name are used in dropdown
 }
 
 export default function HomePage() {
-  const [campaigns, setCampaigns] = useState<Campaign[]>([])
-  const [selectedCampaign, setSelectedCampaign] = useState<string>("")
-  const [loading, setLoading] = useState<boolean>(true)
+  const [campaigns, setCampaigns] = useState<HomePageCampaign[]>([])
+  const [selectedCampaign, setSelectedCampaign] = useState("")
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -24,22 +26,25 @@ export default function HomePage() {
       try {
         setLoading(true)
         setError(null)
-        const response = await fetch("/api/campaigns")
+        const response = await fetch(`${BACKEND_URL}/api/campaigns`) // MODIFIED: Use BACKEND_URL
         if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`)
+          const errorResult = await response.json().catch(() => ({})); // Try to get error from backend
+          throw new Error(errorResult.error || `HTTP error! status: ${response.status}`)
         }
         const data = await response.json()
-        setCampaigns(data)
+        setCampaigns(data.campaigns || []) // MODIFIED: Expect { campaigns: [...] } structure
+        console.log("Fetched campaigns for homepage:", data.campaigns);
       } catch (e: any) {
-        console.error("Failed to fetch campaigns:", e)
-        setError("Failed to load campaigns. Please try again later.")
+        console.error("Failed to fetch campaigns for homepage:", e)
+        setError(e.message || "Failed to load campaigns. Please try again later.")
+        setCampaigns([]); // Clear campaigns on error
       } finally {
         setLoading(false)
       }
     }
 
     fetchCampaigns()
-  }, []) // Empty dependency array means this effect runs once on mount
+  }, []) 
 
   const handleCampaignChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
     setSelectedCampaign(event.target.value)
@@ -80,13 +85,13 @@ export default function HomePage() {
                     {loading ? "Loading campaigns..." : campaigns.length === 0 ? "No campaigns found" : "Select an existing interview to edit..."}
                   </option>
                   {campaigns.map((campaign) => (
-                    <option key={campaign.id} value={campaign.id}>
-                      {campaign.name}
+                    <option key={campaign.campaign_id} value={campaign.campaign_id}> {/* MODIFIED: Use campaign_id and campaign_name */}
+                      {campaign.campaign_name}
                     </option>
                   ))}
                 </select>
               </div>
-              <Link href={selectedCampaign ? `/admin/edit/${selectedCampaign}` : "#"} passHref legacyBehavior>
+              <Link href={selectedCampaign ? `/admin?campaignId=${selectedCampaign}` : "#"} passHref legacyBehavior>
                 <Button
                   asChild
                   variant="outline"
@@ -102,23 +107,18 @@ export default function HomePage() {
           <Card className="hover:shadow-lg transition-shadow">
             <CardHeader>
               <div className="flex items-center gap-3">
-                <Settings className="h-8 w-8 text-slate-600" />
+                <PlusCircle className="h-8 w-8 text-slate-600" />
                 <div>
                   <CardTitle>Create New Interview</CardTitle>
-                  <CardDescription>Set up a new research campaign and configure interview questions</CardDescription>
+                  <CardDescription>Design a new interview campaign from scratch</CardDescription>
                 </div>
               </div>
             </CardHeader>
             <CardContent>
-              <ul className="space-y-2 text-sm text-slate-600 mb-6">
-                <li>• Configure research details and URLs</li>
-                <li>• Define demographic fields</li>
-                <li>• Set up screening questions</li>
-                <li>• Create voice interview questions</li>
-                <li>• Generate participant URLs</li>
-              </ul>
-              <Link href="/admin">
-                <Button className="w-full">Generate Interview</Button>
+              <Link href="/admin" passHref legacyBehavior>
+                <Button asChild className="w-full">
+                  <a>Create New Campaign</a>
+                </Button>
               </Link>
             </CardContent>
           </Card>

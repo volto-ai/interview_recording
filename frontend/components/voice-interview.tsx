@@ -31,8 +31,8 @@ export default function VoiceInterview({ questions, onComplete }: VoiceInterview
 
   useEffect(() => {
     const generateWaveform = () => {
-      const newData = Array.from({ length: 50 }, () => Math.random() * 100)
-      setWaveformData(newData)
+        const newData = Array.from({ length: 50 }, () => Math.random() * 100)
+        setWaveformData(newData)
     }
 
     if (isRecording) {

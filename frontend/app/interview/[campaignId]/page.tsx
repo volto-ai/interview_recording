@@ -16,7 +16,7 @@ interface Campaign {
   screenoutUrl: string
   qualityUrl: string
   completedUrl: string
-  questions: Array<{ id: string; text: string }>
+  questions: Array<{ id: string; text: string; time_limit_sec: number }>
   demographicFields: Array<{
     id: string
     label: string
@@ -40,7 +40,11 @@ function mapBackendCampaignToCampaign(backend: any): Campaign {
     screenoutUrl: backend.screening_params?.screenoutUrl || "",
     qualityUrl: backend.quality_params?.qualityUrl || "",
     completedUrl: backend.quality_params?.completedUrl || "",
-    questions: backend.questions?.map((q: any) => ({ id: q.id, text: q.text })) || [],
+    questions: backend.questions?.map((q: any) => ({ 
+      id: q.id, 
+      text: q.text, 
+      time_limit_sec: q.time_limit_sec || 60 
+    })) || [],
     demographicFields: backend.screening_params?.demographicFields || [],
     screenoutQuestions: backend.screening_params?.screenoutQuestions || [],
   }
@@ -228,7 +232,7 @@ export default function InterviewPage() {
   }
 
   if (currentStep === "interview") {
-    return <VoiceInterview questions={campaign.questions} onComplete={handleInterviewComplete} />
+    return <VoiceInterview questions={campaign.questions} campaignId={campaignId} onComplete={handleInterviewComplete} />
   }
 
   return (

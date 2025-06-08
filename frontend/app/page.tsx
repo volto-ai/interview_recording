@@ -5,8 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Settings, Edit, PlusCircle } from "lucide-react"
 import { useState, useEffect } from "react"
-
-const BACKEND_URL = "http://localhost:8000"; // Define backend URL
+import { getApiUrl } from "@/utils/api"
 
 // Simplified campaign type for the homepage dropdown
 interface HomePageCampaign {
@@ -26,7 +25,7 @@ export default function HomePage() {
       try {
         setLoading(true)
         setError(null)
-        const response = await fetch(`${BACKEND_URL}/api/campaigns`) // MODIFIED: Use BACKEND_URL
+        const response = await fetch(getApiUrl('/api/campaigns'))
         if (!response.ok) {
           const errorResult = await response.json().catch(() => ({})); // Try to get error from backend
           throw new Error(errorResult.error || `HTTP error! status: ${response.status}`)

@@ -1,0 +1,72 @@
+steps:
+  # Build the backend image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '--platform=linux/amd64', '-t', 'europe-west3-docker.pkg.dev/$PROJECT_ID/interview-recording/backend', '-f', 'backend/Dockerfile', '.']
+
+  # Push the backend image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'europe-west3-docker.pkg.dev/$PROJECT_ID/interview-recording/backend']
+
+  # Deploy the backend service
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'interview-backend'
+      - '--image'
+      - 'europe-west3-docker.pkg.dev/$PROJECT_ID/interview-recording/backend'
+      - '--region'
+      - 'europe-west3'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+      - '--port'
+      - '8000'
+
+  # Build the frontend image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '--platform=linux/amd64'
+      - '-t'
+      - 'europe-west3-docker.pkg.dev/$PROJECT_ID/interview-recording/frontend'
+      - '--build-arg'
+      - 'NEXT_PUBLIC_BACKEND_URL=${_BACKEND_URL}'
+      - '-f'
+      - 'frontend/Dockerfile'
+      - '.'
+
+  # Push the frontend image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'europe-west3-docker.pkg.dev/$PROJECT_ID/interview-recording/frontend']
+
+  # Deploy the frontend service
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'interview-frontend'
+      - '--image'
+      - 'europe-west3-docker.pkg.dev/$PROJECT_ID/interview-recording/frontend'
+      - '--region'
+      - 'europe-west3'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+      - '--port'
+      - '8080'
+      - '--set-env-vars'
+      - 'NEXT_PUBLIC_BACKEND_URL=${_BACKEND_URL}'
+
+images:
+  - 'europe-west3-docker.pkg.dev/$PROJECT_ID/interview-recording/backend'
+  - 'europe-west3-docker.pkg.dev/$PROJECT_ID/interview-recording/frontend'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+
+# This substitution will hold the URL of the deployed backend service.
+substitutions:
+  _BACKEND_URL: "TBD" 

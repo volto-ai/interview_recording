@@ -8,6 +8,7 @@ import { Clock, HelpCircle, Globe } from "lucide-react"
 import DemographicsForm from "@/components/demographics-form"
 import ScreenoutForm from "@/components/screenout-form"
 import VoiceInterview from "@/components/voice-interview"
+import { getApiUrl } from "@/utils/api"
 
 interface Campaign {
   id: string
@@ -16,7 +17,7 @@ interface Campaign {
   screenoutUrl: string
   qualityUrl: string
   completedUrl: string
-  questions: Array<{ id: string; text: string }>
+  questions: Array<{ id: string; text: string; time_limit_sec: number }>
   demographicFields: Array<{
     id: string
     label: string
@@ -30,8 +31,6 @@ interface Campaign {
 
 type InterviewStep = "landing" | "demographics" | "screenout" | "interview" | "completed"
 
-const BACKEND_URL = "http://localhost:8000"
-
 function mapBackendCampaignToCampaign(backend: any): Campaign {
   return {
     id: backend.id || backend.campaign_id,
@@ -40,7 +39,11 @@ function mapBackendCampaignToCampaign(backend: any): Campaign {
     screenoutUrl: backend.screening_params?.screenoutUrl || "",
     qualityUrl: backend.quality_params?.qualityUrl || "",
     completedUrl: backend.quality_params?.completedUrl || "",
-    questions: backend.questions?.map((q: any) => ({ id: q.id, text: q.text })) || [],
+    questions: backend.questions?.map((q: any) => ({ 
+      id: q.id, 
+      text: q.text, 
+      time_limit_sec: q.time_limit_sec || 60 
+    })) || [],
     demographicFields: backend.screening_params?.demographicFields || [],
     screenoutQuestions: backend.screening_params?.screenoutQuestions || [],
   }
@@ -66,7 +69,7 @@ export default function InterviewPage() {
       }
       try {
         setIsLoading(true);
-        const response = await fetch(`${BACKEND_URL}/api/campaigns/${campaignId}`);
+        const response = await fetch(getApiUrl(`/api/campaigns/${campaignId}`));
         if (response.ok) {
           const data = await response.json();
           setCampaign(mapBackendCampaignToCampaign(data));
@@ -106,7 +109,7 @@ export default function InterviewPage() {
 
       try {
         // Call screenout endpoint
-        const response = await fetch(`${BACKEND_URL}/api/screenout`, {
+        const response = await fetch(getApiUrl('/api/screenout'), {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -121,26 +124,100 @@ export default function InterviewPage() {
 
         if (!response.ok) {
           console.error('Failed to record screenout:', await response.text())
+          // If screenout fails, continue to interview
+          setCurrentStep("interview")
+          return
         }
+
+        // Fire screenout URL and redirect
+        fireUrlInIframe(campaign.screenoutUrl).then(() => {
+          window.location.href = campaign.screenoutUrl
+        })
       } catch (error) {
         console.error('Error recording screenout:', error)
+        // If there's an error, continue to interview
+        setCurrentStep("interview")
       }
-
-      // Redirect to screenout URL
-      window.location.href = campaign.screenoutUrl
       return
     }
 
     setCurrentStep("interview")
   }
 
-  const handleInterviewComplete = () => {
-    if (campaign?.completedUrl) {
-      window.location.href = campaign.completedUrl
-    } else {
+  const handleInterviewComplete = async () => {
+    if (!participantId || !campaign) {
+      console.error('Participant ID or campaign is missing')
+      return
+    }
+
+    try {
+      const submissionData = {
+        campaign_id: campaign.id,
+        participant_id: participantId,
+        demographics: demographicsData,
+        completed_url: campaign.completedUrl
+      }
+
+      console.log('Submitting interview data:', {
+        campaignId: campaign.id,
+        participantId,
+        demographicsCount: Object.keys(demographicsData).length,
+        completedUrl: campaign.completedUrl
+      })
+      console.log('Full submission data:', submissionData)
+
+      // Submit interview data
+      const response = await fetch(getApiUrl('/api/interviews/submit'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(submissionData)
+      })
+
+      if (!response.ok) {
+        console.error('Failed to submit interview:', await response.text())
+        // If submission fails, show completion page
+        setCurrentStep("completed")
+        return
+      }
+
+      // If submission is successful and we have a completed URL
+      if (campaign.completedUrl) {
+        // Fire completed URL and redirect
+        fireUrlInIframe(campaign.completedUrl).then(() => {
+          window.location.href = campaign.completedUrl
+        })
+      } else {
+        // If no completed URL is provided, show completion page
+        setCurrentStep("completed")
+      }
+    } catch (error) {
+      console.error('Error submitting interview:', error)
+      // If there's an error, show completion page
       setCurrentStep("completed")
     }
   }
+
+  // Helper function to fire URL with backend logging
+  const fireUrlInIframe = async (url: string) => {
+    if (!url) return;
+    
+    try {
+      // Log in backend via API endpoint
+      const response = await fetch('/api/redirect', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          url,
+        }),
+      });
+    } catch (error) {
+      console.error('Error tracking URL:', error);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -228,7 +305,12 @@ export default function InterviewPage() {
   }
 
   if (currentStep === "interview") {
-    return <VoiceInterview questions={campaign.questions} onComplete={handleInterviewComplete} />
+    return <VoiceInterview 
+      questions={campaign.questions} 
+      campaignId={campaignId} 
+      participantId={participantId}
+      onComplete={handleInterviewComplete} 
+    />
   }
 
   return (

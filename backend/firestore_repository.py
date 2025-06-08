@@ -19,7 +19,9 @@ class FirestoreRepository:
             if os.path.exists(local_cred_file_path):
                 try:
                     cred = credentials.Certificate(local_cred_file_path)
-                    firebase_admin.initialize_app(cred)
+                    firebase_admin.initialize_app(cred, {
+                        'storageBucket': 'dev-volto-interviews.firebasestorage.app'
+                    })
                     print(f"Firebase Admin SDK initialized successfully using: {local_cred_file_path}")
                 except Exception as e:
                     error_message = (

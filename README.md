@@ -44,6 +44,28 @@ cd interview_recording
 
 3. The server will start on `http://localhost:8000`
 
+## Deployment
+
+1. Login to Google Cloud:
+```bash
+gcloud auth login
+```
+
+2. Deploy the application:
+```bash
+./deploy.sh
+```
+
+To deploy only the frontend:
+```bash
+./deploy.sh --fe
+```
+
+To deploy only the backend:
+```bash
+./deploy.sh --be
+```
+
 ## Running the Application
 
 1. Run the cli_test.py to test the backend (feel free to mess around):
@@ -80,10 +102,22 @@ interview_recording/
 │   ├── main.py              # Main Flask application
 │   ├── models.py            # Data models
 │   ├── storage_utils.py     # Storage utilities
-│   ├── interactive_interview.py  # Interview logic
-│   └── local_data/          # Local storage directory
-├── requirements.txt         # Python dependencies
-└── start.sh                # Startup script
+│   ├── firestore_repository.py  # Firestore data access
+│   ├── cli_test.py         # CLI testing utility
+│   └── Dockerfile          # Backend container configuration
+├── frontend/
+│   ├── app/                # Next.js application
+│   │   ├── admin/         # Admin dashboard
+│   │   ├── interview/     # Interview interface
+│   │   └── api/          # API routes
+│   ├── components/        # React components
+│   ├── utils/            # Utility functions
+│   ├── public/           # Static assets
+│   └── Dockerfile        # Frontend container configuration
+├── requirements.txt       # Python dependencies
+├── cloudbuild.yaml       # Cloud Build configuration
+├── deploy.sh            # Deployment script
+└── README.md            # Project documentation
 ```
 
 ## Resources:

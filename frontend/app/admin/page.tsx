@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Plus, Trash2, Copy, Sparkles, ChevronDown, ChevronUp, Edit, Eye, ArrowLeft } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter, useSearchParams } from "next/navigation"
+import { getApiUrl } from "@/utils/api"
 
 interface Question {
   id: string
@@ -49,8 +50,6 @@ interface BackendCampaign {
   updated_at?: string | null;
 }
 
-const BACKEND_URL = "http://localhost:8000"; // Define backend URL
-
 // Utility: Map backend campaign to flat form state
 function mapBackendCampaignToFormState(backend: BackendCampaign) {
   return {
@@ -65,13 +64,18 @@ function mapBackendCampaignToFormState(backend: BackendCampaign) {
       time_limit_sec: q.time_limit_sec
     })) || [{ id: "1", text: "", time_limit_sec: 60 }],
     demographicFields: backend.screening_params?.demographicFields || [
-      { id: "1", label: "Gender", type: "select", options: ["Male", "Female", "Diverse"] },
-      { id: "2", label: "Occupation", type: "text" },
-      { id: "3", label: "Income Range", type: "select", options: [
-        "Under €25,000", "€25,000 - €49,999", "€50,000 - €74,999",
-        "€75,000 - €99,999", "€100,000 - €149,999", "€150,000+"
+      { id: "age", label: "Age", type: "slider", min: 16, max: 100 },
+      { id: "gender", label: "Gender", type: "select", options: ["Male", "Female", "Diverse"] },
+      { id: "occupation", label: "Occupation", type: "text" },
+      { id: "income", label: "Income Range", type: "select", options: [
+        "Under €25,000",
+        "€25,000 - €49,999",
+        "€50,000 - €74,999",
+        "€75,000 - €99,999",
+        "€100,000 - €149,999",
+        "€150,000+"
       ] },
-      { id: "4", label: "Location", type: "text" },
+      { id: "city", label: "City", type: "text" },
     ],
     screenoutQuestions: backend.screening_params?.screenoutQuestions || [{ id: "1", text: "", options: ["Yes", "No"] }]
   }
@@ -123,7 +127,8 @@ function mapFormStateToBackendPayload(form: {
   }
 }
 
-export default function AdminPage() {
+// Create a client component that uses useSearchParams
+function AdminPageContent() {
   const { toast } = useToast()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -135,9 +140,10 @@ export default function AdminPage() {
   const [completedUrl, setCompletedUrl] = useState("")
   const [questions, setQuestions] = useState<Question[]>([{ id: "1", text: "", time_limit_sec: 60 }])
   const [demographicFields, setDemographicFields] = useState<DemographicField[]>([
-    { id: "1", label: "Gender", type: "select", options: ["Male", "Female", "Diverse"] },
-    { id: "2", label: "Occupation", type: "text" },
-    { id: "3", label: "Income Range", type: "select", options: [
+    { id: "age", label: "Age", type: "slider", min: 16, max: 100 },
+    { id: "gender", label: "Gender", type: "select", options: ["Male", "Female", "Diverse"] },
+    { id: "occupation", label: "Occupation", type: "text" },
+    { id: "income", label: "Income Range", type: "select", options: [
       "Under €25,000",
       "€25,000 - €49,999",
       "€50,000 - €74,999",
@@ -145,7 +151,7 @@ export default function AdminPage() {
       "€100,000 - €149,999",
       "€150,000+"
     ] },
-    { id: "4", label: "Location", type: "text" },
+    { id: "city", label: "City", type: "text" },
   ])
   const [demographicsOpen, setDemographicsOpen] = useState(false)
   const [screenoutQuestions, setScreenoutQuestions] = useState<ScreenoutQuestion[]>([
@@ -161,7 +167,7 @@ export default function AdminPage() {
   useEffect(() => {
     if (campaignIdFromQuery) {
       setIsLoadingCampaignDetails(true)
-      fetch(`${BACKEND_URL}/api/campaigns/${campaignIdFromQuery}`)
+      fetch(getApiUrl(`/api/campaigns/${campaignIdFromQuery}`))
         .then(async (response) => {
           if (!response.ok) {
             const errorResult = await response.json().catch(() => ({}))
@@ -238,7 +244,7 @@ export default function AdminPage() {
     if (!window.confirm('Are you sure you want to delete this campaign? This cannot be undone.')) return
     setIsLoading(true)
     try {
-      const response = await fetch(`${BACKEND_URL}/api/campaigns/${editingCampaign.campaign_id}`, { method: 'DELETE' })
+      const response = await fetch(getApiUrl(`/api/campaigns/${editingCampaign.campaign_id}`), { method: 'DELETE' })
       if (!response.ok) {
         const result = await response.json().catch(() => ({}))
         throw new Error(result.error || result.message || `HTTP error! status: ${response.status}`)
@@ -268,7 +274,7 @@ export default function AdminPage() {
   }
 
   const addDemographicField = () => {
-    const newId = (demographicFields.length + 1).toString()
+    const newId = `field_${demographicFields.length + 1}`
     setDemographicFields([...demographicFields, { id: newId, label: "", type: "text" }])
   }
 
@@ -337,7 +343,7 @@ export default function AdminPage() {
       let response, result
       if (editingCampaign && editingCampaign.campaign_id) {
         const updatePayload = { ...basePayload, campaign_id: editingCampaign.campaign_id }
-        response = await fetch(`${BACKEND_URL}/api/campaigns/${editingCampaign.campaign_id}`, {
+        response = await fetch(getApiUrl(`/api/campaigns/${editingCampaign.campaign_id}`), {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(updatePayload),
@@ -346,7 +352,7 @@ export default function AdminPage() {
         if (!response.ok) throw new Error(result.error || result.message || `HTTP error! status: ${response.status}`)
         toast({ title: "Campaign Updated!", description: `Campaign '${researchName}' was successfully updated.` })
         // Fetch the updated campaign and set as editingCampaign
-        fetch(`${BACKEND_URL}/api/campaigns/${editingCampaign.campaign_id}`)
+        fetch(getApiUrl(`/api/campaigns/${editingCampaign.campaign_id}`))
           .then(async (response) => {
             if (!response.ok) throw new Error("Failed to fetch updated campaign")
             return response.json()
@@ -361,7 +367,7 @@ export default function AdminPage() {
           })
         return
       } else {
-        response = await fetch(`${BACKEND_URL}/api/campaigns`, {
+        response = await fetch(getApiUrl(`/api/campaigns`), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(basePayload),
@@ -374,7 +380,7 @@ export default function AdminPage() {
         setCreatedCampaignId(backendCampaignId)
         toast({ title: "Interview Campaign Created!", description: "Campaign data sent to the Flask server. URL generated." })
         // Enter edit mode for the new campaign
-        fetch(`${BACKEND_URL}/api/campaigns/${backendCampaignId}`)
+        fetch(getApiUrl(`/api/campaigns/${backendCampaignId}`))
           .then(async (response) => {
             if (!response.ok) {
               const errorResult = await response.json().catch(() => ({}))
@@ -429,9 +435,10 @@ export default function AdminPage() {
     setCompletedUrl("")
     setQuestions([{ id: "1", text: "", time_limit_sec: 60 }])
     setDemographicFields([
-      { id: "1", label: "Gender", type: "select", options: ["Male", "Female", "Diverse"] },
-      { id: "2", label: "Occupation", type: "text" },
-      { id: "3", label: "Income Range", type: "select", options: [
+      { id: "age", label: "Age", type: "slider", min: 16, max: 100 },
+      { id: "gender", label: "Gender", type: "select", options: ["Male", "Female", "Diverse"] },
+      { id: "occupation", label: "Occupation", type: "text" },
+      { id: "income", label: "Income Range", type: "select", options: [
         "Under €25,000",
         "€25,000 - €49,999",
         "€50,000 - €74,999",
@@ -439,7 +446,7 @@ export default function AdminPage() {
         "€100,000 - €149,999",
         "€150,000+"
       ] },
-      { id: "4", label: "Location", type: "text" },
+      { id: "city", label: "City", type: "text" },
     ])
     setDemographicsOpen(false)
     setScreenoutQuestions([
@@ -751,9 +758,9 @@ export default function AdminPage() {
             </CardHeader>
             <CardContent>
               <div className="flex gap-2 items-center">
-                <Input value={`http://localhost:3000/interview/${editingCampaign ? editingCampaign.campaign_id : createdCampaignId}`} readOnly />
+                <Input value={`${window.location.origin}/interview/${editingCampaign ? editingCampaign.campaign_id : createdCampaignId}`} readOnly />
                 <Button variant="outline" size="icon" onClick={() => {
-                  navigator.clipboard.writeText(`http://localhost:3000/interview/${editingCampaign ? editingCampaign.campaign_id : createdCampaignId}`)
+                  navigator.clipboard.writeText(`${window.location.origin}/interview/${editingCampaign ? editingCampaign.campaign_id : createdCampaignId}`)
                   toast({ title: "URL copied!", description: "Interview URL has been copied to clipboard." })
                 }}>
                   <Copy className="h-4 w-4" />
@@ -764,5 +771,14 @@ export default function AdminPage() {
         )}
       </div>
     </div>
+  )
+}
+
+// Main page component with Suspense boundary
+export default function AdminPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <AdminPageContent />
+    </Suspense>
   )
 }

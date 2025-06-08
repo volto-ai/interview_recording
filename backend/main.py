@@ -3,7 +3,7 @@ from flask_cors import CORS
 import os
 import uuid
 from datetime import datetime
-from models import InterviewConfigurator, InterviewResponse, Question
+from models import InterviewConfigurator, InterviewResponse, Question, Demographics
 from storage_utils import (
     save_interview_config, 
     get_interview_config, 
@@ -127,8 +127,8 @@ def upload_recording():
         if not all([campaign_id, participant_id, question_id]):
             return jsonify({"error": "Missing required fields"}), 400
         
-        # Generate unique filename
-        filename = f"{uuid.uuid4()}.wav"
+        # Generate unique filename (from timestamp)
+        filename = f"{datetime.now().strftime('%Y%m%d%H%M%S')}.wav"
         local_path = os.path.join(UPLOAD_FOLDER, filename)
         audio_file.save(local_path)
         
@@ -151,22 +151,25 @@ def submit_interview():
     """Submit a complete interview response"""
     try:
         data = request.json
-        response = InterviewResponse(**data)
+        print(f"Received data for submit_interview: {data}")
+        response = InterviewResponse(
+            campaign_id=data['campaign_id'],
+            participant_id=data['participant_id'],
+            demographics=Demographics(**data['demographics']),
+            submitted_at=datetime.now().isoformat()
+        )
         
         # Convert to dict for Firebase
         response_dict = response.model_dump()
         response_dict['submitted_at'] = response_dict['submitted_at'].isoformat()
-        
-        # Convert recording timestamps
-        for question_id, recordings in response_dict['recordings'].items():
-            for recording in recordings:
-                recording['created_at'] = recording['created_at'].isoformat()
-        
         response_id = save_interview_response(response_dict)
+
         return jsonify({
+            "success": True,
             "response_id": response_id,
             "message": "Interview submitted successfully"
-        }), 201
+        }), 200
+        
     except Exception as e:
         return jsonify({"error": str(e)}), 400
 
@@ -218,11 +221,10 @@ def handle_screenout():
         # Save to storage
         save_interview_response(screenout_data)
         
-        # Redirect to screenout URL
-        if screenout_url:
-            return redirect(screenout_url)
-        else:
-            return jsonify({"error": "No screenout URL provided"}), 400
+        return jsonify({
+            "success": True,
+            "message": "Screenout recorded successfully"
+        }), 200
             
     except Exception as e:
         return jsonify({"error": str(e)}), 400

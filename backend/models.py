@@ -19,11 +19,11 @@ class InterviewConfigurator(BaseModel):
     updated_at: Optional[datetime] = Field(None, description="The date and time the campaign was last updated")
 
 class Demographics(BaseModel):
-    gender: str = Field(description="The gender of the participant")
-    age: int = Field(description="The age of the participant")
-    city: str = Field(description="The city of the participant")
-    income: str = Field(description="The income range of the participant")
-    occupation: str = Field(description="The occupation of the participant")
+    gender: Optional[str] = Field(default=None, description="The gender of the participant")
+    age: Optional[int] = Field(default=None, description="The age of the participant")
+    city: Optional[str] = Field(default=None, description="The city of the participant")
+    income: Optional[str] = Field(default=None, description="The income range of the participant")
+    occupation: Optional[str] = Field(default=None, description="The occupation of the participant")
 
 class Recording(BaseModel):
     question_id: str = Field(description="The unique identifier for the question")

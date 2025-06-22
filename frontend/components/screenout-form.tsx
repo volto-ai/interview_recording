@@ -37,8 +37,9 @@ export default function ScreenoutForm({ questions, onSubmit }: ScreenoutFormProp
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <Card className="w-full max-w-2xl">
         <CardHeader>
-          <CardTitle className="text-2xl">Screening Questions</CardTitle>
-          <CardDescription>Please answer the following questions with Yes or No.</CardDescription>
+        <CardTitle className="text-2xl">Zielgruppe Überprüfung
+        </CardTitle>
+        <CardDescription>Bitte beantworten Sie die folgenden Fragen mit Ja oder Nein.</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -49,7 +50,7 @@ export default function ScreenoutForm({ questions, onSubmit }: ScreenoutFormProp
                   value={answers[question.id]}
                   onValueChange={(value) => updateAnswer(question.id, value)}
                 >
-                  {(question.options || ["Yes", "No"]).map((option) => (
+                  {(question.options || ["Ja", "Nein"]).map((option) => (
                     <div key={option} className="flex items-center space-x-2">
                       <RadioGroupItem value={option} id={`${question.id}-${option}`} />
                       <Label htmlFor={`${question.id}-${option}`}>{option}</Label>
@@ -61,10 +62,10 @@ export default function ScreenoutForm({ questions, onSubmit }: ScreenoutFormProp
 
             <div className="flex gap-4 pt-6">
               <Button type="button" variant="outline" className="flex-1">
-                Back
+                Zurück
               </Button>
               <Button type="submit" className="flex-1 bg-slate-800 hover:bg-slate-700" disabled={!allQuestionsAnswered}>
-                Continue
+                Weiter
               </Button>
             </div>
           </form>

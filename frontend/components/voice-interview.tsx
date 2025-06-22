@@ -250,7 +250,7 @@ export default function VoiceInterview({ questions, campaignId, participantId, o
       <Card className="w-full max-w-2xl">
         <CardHeader>
           <CardTitle className="text-xl">
-            Question {currentQuestionIndex + 1} of {questions.length}
+            Frage {currentQuestionIndex + 1} von {questions.length}
           </CardTitle>
           <CardDescription className="text-lg">{currentQuestion.text}</CardDescription>
           <div className="flex items-center gap-2 text-sm text-gray-600 mt-2">
@@ -306,6 +306,12 @@ export default function VoiceInterview({ questions, campaignId, participantId, o
                 <span className="text-red-600">Fehler beim Hochladen. Bitte versuchen Sie es erneut.</span>
               </>
             )}
+            {!currentQuestionRecording && uploadStatus === 'idle' && !isRecording && (
+              <>
+                <AlertCircle className="h-5 w-5 text-orange-500" />
+                <span className="text-orange-600">Bitte nehmen Sie eine Antwort auf, bevor Sie fortfahren</span>
+              </>
+            )}
           </div>
 
           {/* Waveform Visualization */}
@@ -338,14 +344,14 @@ export default function VoiceInterview({ questions, campaignId, participantId, o
                 setTimeRemaining(0)
               }}
             >
-              Previous
+              Zurück
             </Button>
             <Button 
               className="flex-1 bg-slate-800 hover:bg-slate-700" 
               onClick={nextQuestion} 
-              disabled={isRecording || isUploading}
+              disabled={isRecording || isUploading || !canProceed}
             >
-              {currentQuestionIndex === questions.length - 1 ? "Complete" : "Next Question"}
+              {currentQuestionIndex === questions.length - 1 ? "Abschließen" : "Nächste Frage"}
             </Button>
           </div>
 

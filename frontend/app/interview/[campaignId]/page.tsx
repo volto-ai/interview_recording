@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { useParams, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Clock, HelpCircle, Globe } from "lucide-react"
+import { Clock, HelpCircle, Globe, Mic, Info } from "lucide-react"
 import DemographicsForm from "@/components/demographics-form"
 import ScreenoutForm from "@/components/screenout-form"
 import VoiceInterview from "@/components/voice-interview"
@@ -248,21 +248,9 @@ export default function InterviewPage() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <Card className="w-full max-w-2xl">
           <CardHeader className="text-center">
-            <div className="flex justify-end mb-4">
-              <Button variant="outline" size="sm">
-                <Globe className="h-4 w-4 mr-2" />
-                DE
-              </Button>
-            </div>
             <CardTitle className="text-2xl mb-4">
               Willkommen, Sie sind eingeladen, an einer Forschung teilzunehmen
             </CardTitle>
-            <CardDescription className="text-base leading-relaxed">
-              Ihnen werden einige Fragen gestellt – bitte antworten Sie basierend auf Ihrer persönlichen Perspektive und
-              Erfahrung. Dies ist eine vollständig anonyme Umfrage. Es werden keine persönlichen Daten erfasst, und
-              keine Ihrer Antworten kann auf Sie zurückgeführt werden. Bitte antworten Sie so offen, umfassend und
-              natürlich wie möglich.
-            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="bg-gray-100 rounded-lg p-6 mb-6">
@@ -284,6 +272,33 @@ export default function InterviewPage() {
                 </div>
               </div>
             </div>
+            
+            <div className="bg-green-50 border border-green-200 rounded-lg p-6 mb-6">
+              <div className="flex items-start gap-3">
+                <Info className="h-6 w-6 text-green-600 mt-1 flex-shrink-0" />
+                <div>
+                  <h3 className="font-semibold text-lg mb-3 text-black">Wichtige Hinweise</h3>
+                  <p className="text-black leading-relaxed">
+                    Ihnen werden einige Fragen gestellt – bitte antworten Sie basierend auf Ihrer persönlichen Perspektive und Erfahrung. Dies ist eine vollständig anonyme Umfrage. Es werden keine persönlichen Daten erfasst, und keine Ihrer Antworten kann auf Sie zurückgeführt werden. Bitte antworten Sie so offen, umfassend und natürlich wie möglich.
+                  </p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6">
+              <div className="flex items-start gap-3">
+                <div className="w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center flex-shrink-0 mt-1">
+                  <Mic className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-lg mb-3 text-black">Sprachaufnahme-Anleitung</h3>
+                  <p className="text-black leading-relaxed">
+                   Diese Studie wird per Spracheingabe durchgeführt. Sobald Sie eine Frage sehen und das Mikrofonsymbol erscheint, klicken Sie darauf, erlauben Sie den Mikrofonzugriff und starten Sie die Aufnahme. Zum Stoppen einfach erneut klicken.
+                  </p>
+                </div>
+              </div>
+            </div>
+            
             <Button
               className="w-full bg-slate-800 hover:bg-slate-700 text-white py-3"
               onClick={() => setCurrentStep("demographics")}

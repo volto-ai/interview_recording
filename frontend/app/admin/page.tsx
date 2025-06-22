@@ -64,20 +64,20 @@ function mapBackendCampaignToFormState(backend: BackendCampaign) {
       time_limit_sec: q.time_limit_sec
     })) || [{ id: "1", text: "", time_limit_sec: 60 }],
     demographicFields: backend.screening_params?.demographicFields || [
-      { id: "age", label: "Age", type: "slider", min: 16, max: 100 },
-      { id: "gender", label: "Gender", type: "select", options: ["Male", "Female", "Diverse"] },
-      { id: "occupation", label: "Occupation", type: "text" },
-      { id: "income", label: "Income Range", type: "select", options: [
-        "Under €25,000",
-        "€25,000 - €49,999",
-        "€50,000 - €74,999",
-        "€75,000 - €99,999",
-        "€100,000 - €149,999",
-        "€150,000+"
+      { id: "age", label: "Alter", type: "slider", min: 16, max: 100 },
+      { id: "gender", label: "Geschlecht", type: "select", options: ["Männlich", "Weiblich", "Divers"] },
+      { id: "occupation", label: "Beruf", type: "text" },
+      { id: "income", label: "Einkommen", type: "select", options: [
+        "Unter €25.000",
+        "€25.000 - €49.999",
+        "€50.000 - €74.999",
+        "€75.000 - €99.999",
+        "€100.000 - €149.999",
+        "€150.000+"
       ] },
-      { id: "city", label: "City", type: "text" },
+      { id: "city", label: "Stadt", type: "text" },
     ],
-    screenoutQuestions: backend.screening_params?.screenoutQuestions || [{ id: "1", text: "", options: ["Yes", "No"] }]
+    screenoutQuestions: backend.screening_params?.screenoutQuestions || [{ id: "1", text: "", options: ["Ja", "Nein"] }]
   }
 }
 
@@ -140,22 +140,22 @@ function AdminPageContent() {
   const [completedUrl, setCompletedUrl] = useState("")
   const [questions, setQuestions] = useState<Question[]>([{ id: "1", text: "", time_limit_sec: 60 }])
   const [demographicFields, setDemographicFields] = useState<DemographicField[]>([
-    { id: "age", label: "Age", type: "slider", min: 16, max: 100 },
-    { id: "gender", label: "Gender", type: "select", options: ["Male", "Female", "Diverse"] },
-    { id: "occupation", label: "Occupation", type: "text" },
-    { id: "income", label: "Income Range", type: "select", options: [
-      "Under €25,000",
-      "€25,000 - €49,999",
-      "€50,000 - €74,999",
-      "€75,000 - €99,999",
-      "€100,000 - €149,999",
-      "€150,000+"
+    { id: "age", label: "Alter", type: "slider", min: 16, max: 100 },
+    { id: "gender", label: "Geschlecht", type: "select", options: ["Männlich", "Weiblich", "Divers"] },
+    { id: "occupation", label: "Beruf", type: "text" },
+    { id: "income", label: "Einkommensbereich", type: "select", options: [
+      "Unter €25.000",
+      "€25.000 - €49.999",
+      "€50.000 - €74.999",
+      "€75.000 - €99.999",
+      "€100.000 - €149.999",
+      "€150.000+"
     ] },
-    { id: "city", label: "City", type: "text" },
+    { id: "city", label: "Stadt", type: "text" },
   ])
   const [demographicsOpen, setDemographicsOpen] = useState(false)
   const [screenoutQuestions, setScreenoutQuestions] = useState<ScreenoutQuestion[]>([
-    { id: "1", text: "", options: ["Yes", "No"] }
+    { id: "1", text: "", options: ["Ja", "Nein"] }
   ])
   const [generatedUrl, setGeneratedUrl] = useState("")
   const [isLoading, setIsLoading] = useState(false)
@@ -292,7 +292,7 @@ function AdminPageContent() {
     const newId = (screenoutQuestions.length + 1).toString()
     setScreenoutQuestions([
       ...screenoutQuestions,
-      { id: newId, text: "", options: ["Yes", "No"], screenoutValue: undefined },
+      { id: newId, text: "", options: ["Ja", "Nein"], screenoutValue: undefined },
     ])
   }
 
@@ -435,22 +435,22 @@ function AdminPageContent() {
     setCompletedUrl("")
     setQuestions([{ id: "1", text: "", time_limit_sec: 60 }])
     setDemographicFields([
-      { id: "age", label: "Age", type: "slider", min: 16, max: 100 },
-      { id: "gender", label: "Gender", type: "select", options: ["Male", "Female", "Diverse"] },
-      { id: "occupation", label: "Occupation", type: "text" },
-      { id: "income", label: "Income Range", type: "select", options: [
-        "Under €25,000",
-        "€25,000 - €49,999",
-        "€50,000 - €74,999",
-        "€75,000 - €99,999",
-        "€100,000 - €149,999",
-        "€150,000+"
+      { id: "age", label: "Alter", type: "slider", min: 16, max: 100 },
+      { id: "gender", label: "Geschlecht", type: "select", options: ["Männlich", "Weiblich", "Divers"] },
+      { id: "occupation", label: "Beruf", type: "text" },
+      { id: "income", label: "Einkommen", type: "select", options: [
+        "Unter €25.000",
+        "€25.000 - €49.999",
+        "€50.000 - €74.999",
+        "€75.000 - €99.999",
+        "€100.000 - €149.999",
+        "€150.000+"
       ] },
-      { id: "city", label: "City", type: "text" },
+      { id: "city", label: "Stadt", type: "text" },
     ])
     setDemographicsOpen(false)
     setScreenoutQuestions([
-      { id: "1", text: "", options: ["Yes", "No"] }
+      { id: "1", text: "", options: ["Ja", "Nein"] }
     ])
     setGeneratedUrl("")
   }

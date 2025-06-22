@@ -40,12 +40,6 @@ export default function DemographicsForm({ fields, onSubmit }: DemographicsFormP
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <Card className="w-full max-w-2xl">
         <CardHeader>
-          <div className="flex justify-end mb-4">
-            <Button variant="outline" size="sm">
-              <Globe className="h-4 w-4 mr-2" />
-              DE
-            </Button>
-          </div>
           <CardTitle className="text-2xl">Bitte geben Sie weitere Details zu Ihrer Person an</CardTitle>
           <CardDescription>
             Diese Informationen helfen uns, unsere Umfrageteilnehmer besser zu verstehen.
@@ -75,7 +69,7 @@ export default function DemographicsForm({ fields, onSubmit }: DemographicsFormP
                     onChange={(e) => updateField(field.id, e.target.value)}
                     required
                   >
-                    <option value="">Select an option</option>
+                    <option value="">Option auswählen</option>
                     {field.options?.map((option) => (
                       <option key={option} value={option}>
                         {option}

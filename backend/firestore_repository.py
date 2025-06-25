@@ -68,6 +68,16 @@ class FirestoreRepository:
         doc_ref.delete()
         return document_id
 
+    def query(self, collection: CollectionName, field: str, op: str, value: any):
+        """Queries documents in a collection based on a single field condition."""
+        docs_stream = self.db.collection(collection.value).where(field, op, value).stream()
+        documents = []
+        for doc in docs_stream:
+            doc_data = doc.to_dict()
+            doc_data['id'] = doc.id
+            documents.append(doc_data)
+        return documents
+
     def list_all(self, collection: CollectionName):
         """Lists all documents in the specified collection."""
         docs_stream = self.db.collection(collection.value).stream()

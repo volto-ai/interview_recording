@@ -20,3 +20,5 @@ EXPOSE 8000
 # Use Gunicorn to run the application. This is a production-grade server.
 # It will look for the 'app' object in the 'main.py' file.
 CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "2", "main:app"] 
+
+ENV API_KEY=WOwW-83_SCfJlLdBBZDNtCVN2JDLHPNlhnJU_Ja_Bzc 

@@ -1,7 +1,7 @@
 "use client"
 
 import { Label } from "@/components/ui/label"
-import { getApiUrl } from "@/utils/api"
+import { getApiUrl, getApiHeaders } from "@/utils/api"
 
 import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
@@ -86,6 +86,7 @@ export default function VoiceInterview({ questions, campaignId, participantId, o
 
       const response = await fetch(getApiUrl(`/api/recordings/upload`), {
         method: 'POST',
+        headers: getApiHeaders(),
         body: formData,
       })
 
@@ -228,6 +229,20 @@ export default function VoiceInterview({ questions, campaignId, participantId, o
   // Check if current question has a recording
   const currentQuestionRecording = recordings.find(r => r.questionId === currentQuestion.id)
   const canProceed = currentQuestionRecording?.uploaded || false
+  const isLastQuestion = currentQuestionIndex === questions.length - 1
+
+  // Determine mic button state
+  const isUploaded = !!currentQuestionRecording?.uploaded
+
+  let micButtonClass = "w-28 h-28 rounded-full bg-slate-800 hover:bg-slate-700 p-0"
+  let micButtonIcon = <Mic className="h-12 w-12 text-white" />
+  if (isRecording) {
+    micButtonClass = "w-28 h-28 rounded-full bg-red-500 hover:bg-red-600 p-0"
+    micButtonIcon = <MicOff className="h-12 w-12 text-white" />
+  } else if (isUploaded) {
+    micButtonClass = "w-28 h-28 rounded-full bg-green-600 hover:bg-green-700 p-0"
+    micButtonIcon = <CheckCircle className="h-12 w-12 text-white" />
+  }
 
   // Cleanup timers on unmount
   useEffect(() => {
@@ -246,48 +261,52 @@ export default function VoiceInterview({ questions, campaignId, participantId, o
   }, [timeRemaining, isRecording])
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <Card className="w-full max-w-2xl">
-        <CardHeader>
-          <CardTitle className="text-xl">
-            Frage {currentQuestionIndex + 1} von {questions.length}
-          </CardTitle>
-          <CardDescription className="text-lg">{currentQuestion.text}</CardDescription>
-          <div className="flex items-center gap-2 text-sm text-gray-600 mt-2">
-            <Clock className="h-4 w-4" />
-            <span>Zeit-Limit: {formatTime(currentQuestion.time_limit_sec)}</span>
-          </div>
+    <div className="max-w-2xl mx-auto w-full pt-8 pb-12">
+      {/* Zeit-Limit Card */}
+      <div className="flex justify-end mb-4">
+        <Card className="py-1 px-4 flex items-center gap-2 shadow-none border border-gray-200 bg-white">
+          <Clock className="h-4 w-4 text-gray-600" />
+          <span className="text-sm text-gray-700 font-mono">Zeit-Limit: <b>{formatTime(currentQuestion.time_limit_sec)}</b></span>
+        </Card>
+      </div>
+
+      {/* Frage Card */}
+      <Card className="mb-6 bg-slate-100">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-lg font-semibold">Frage {currentQuestionIndex + 1} von {questions.length}</CardTitle>
         </CardHeader>
-        <CardContent className="text-center space-y-8">
-          {/* Countdown Timer */}
+        <CardContent className="text-lg text-gray-900">
+          {currentQuestion.text}
+        </CardContent>
+      </Card>
+
+      {/* Aufnahme Card */}
+      <Card className="mb-8">
+        <CardContent className="flex flex-col items-center py-10">
+          {/* Countdown Timer (if recording) */}
           {isRecording && (
-            <div className="flex flex-col items-center space-y-2">
-              <div className={`text-3xl font-bold ${timeRemaining <= 10 ? 'text-red-500 animate-pulse' : 'text-blue-600'}`}>
-                {formatTime(timeRemaining)}
-              </div>
+            <div className="flex flex-col items-center space-y-2 mb-4">
+              <div className={`text-3xl font-bold ${timeRemaining <= 10 ? 'text-red-500 animate-pulse' : 'text-black'}`}>{formatTime(timeRemaining)}</div>
               <div className="text-sm text-gray-500">Zeit verbleibt</div>
             </div>
           )}
 
-          {/* Recording Button */}
-          <div className="flex flex-col items-center space-y-4">
+          {/* Mic Button */}
+          <div className="rounded-full w-28 h-28 flex items-center justify-center mb-6 shadow-md" style={{ background: 'transparent' }}>
             <Button
               onClick={isRecording ? stopRecording : startRecording}
               disabled={isUploading}
-              className={`w-24 h-24 rounded-full ${
-                isRecording ? "bg-red-500 hover:bg-red-600" : "bg-slate-800 hover:bg-slate-700"
-              } disabled:opacity-50`}
+              className={micButtonClass}
+              style={{ boxShadow: 'none' }}
             >
-              {isRecording ? <MicOff className="h-8 w-8 text-white" /> : <Mic className="h-8 w-8 text-white" />}
+              {micButtonIcon}
             </Button>
-
-            <div className="text-lg font-medium">
-              {isRecording ? 'Aufnahme läuft' : 'Bereit für Aufnahme'}
-            </div>
           </div>
+          <div className="text-xl font-semibold text-slate-800 mb-2">{isRecording ? 'Aufnahme läuft' : 'Bereit für Aufnahme'}</div>
+          <div className="text-gray-500 text-center text-sm mb-2">Klicken Sie auf das Mikrofon, um Ihre Antwort aufzunehmen.</div>
 
           {/* Status Indicator */}
-          <div className="flex items-center justify-center space-x-2">
+          <div className="flex items-center justify-center space-x-2 mb-2">
             {!currentQuestionRecording && uploadStatus === 'uploading' && (
               <>
                 <Upload className="h-5 w-5 animate-spin text-blue-500" />
@@ -306,61 +325,47 @@ export default function VoiceInterview({ questions, campaignId, participantId, o
                 <span className="text-red-600">Fehler beim Hochladen. Bitte versuchen Sie es erneut.</span>
               </>
             )}
-            {!currentQuestionRecording && uploadStatus === 'idle' && !isRecording && (
-              <>
-                <AlertCircle className="h-5 w-5 text-orange-500" />
-                <span className="text-orange-600">Bitte nehmen Sie eine Antwort auf, bevor Sie fortfahren</span>
-              </>
-            )}
           </div>
 
           {/* Waveform Visualization */}
           {isRecording && (
-            <div className="flex items-center justify-center space-x-1 h-20">
+            <div className="flex items-center justify-center space-x-1 h-20 mb-2">
               {waveformData.map((height, index) => (
                 <div
                   key={index}
                   className="bg-gray-400 rounded-full transition-all duration-75"
-                  style={{
-                    width: "4px",
-                    height: `${Math.max(4, height * 0.6)}px`,
-                  }}
+                  style={{ width: "4px", height: `${Math.max(4, height * 0.6)}px` }}
                 />
               ))}
             </div>
           )}
-
-          {/* Navigation */}
-          <div className="flex gap-4">
-            <Button 
-              variant="outline" 
-              className="flex-1" 
-              disabled={currentQuestionIndex === 0 || isRecording || isUploading}
-              onClick={() => {
-                setCurrentQuestionIndex(prev => prev - 1)
-                setUploadStatus('idle')
-                setHasJustRecorded(false)
-                setIsFirstRecordingForQuestion(false)
-                setTimeRemaining(0)
-              }}
-            >
-              Zurück
-            </Button>
-            <Button 
-              className="flex-1 bg-slate-800 hover:bg-slate-700" 
-              onClick={nextQuestion} 
-              disabled={isRecording || isUploading || !canProceed}
-            >
-              {currentQuestionIndex === questions.length - 1 ? "Abschließen" : "Nächste Frage"}
-            </Button>
-          </div>
-
-          {/* Progress indicator */}
-          <div className="text-sm text-gray-500">
-            Gespeicherte Antworten: {recordings.filter(r => r.uploaded).length} von {questions.length}
-          </div>
         </CardContent>
       </Card>
+
+      {/* Navigation Buttons */}
+      <div className="flex justify-between mt-8 gap-4">
+        <Button
+          variant="outline"
+          className="px-8"
+          disabled={currentQuestionIndex === 0 || isRecording || isUploading}
+          onClick={() => {
+            setCurrentQuestionIndex(prev => prev - 1)
+            setUploadStatus('idle')
+            setHasJustRecorded(false)
+            setIsFirstRecordingForQuestion(false)
+            setTimeRemaining(0)
+          }}
+        >
+          ← Zurück
+        </Button>
+        <Button
+          className="bg-slate-800 hover:bg-slate-900 text-white px-8"
+          onClick={nextQuestion}
+          disabled={isRecording || isUploading || !canProceed}
+        >
+          {isLastQuestion ? "Abschließen" : "Nächste Frage"} {isLastQuestion && <span className="ml-2">✓</span>}
+        </Button>
+      </div>
     </div>
   )
 }

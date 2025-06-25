@@ -80,8 +80,72 @@ def get_interview_config(campaign_id: str) -> Dict[str, Any]:
         print(f"Error retrieving campaign {campaign_id} from Firestore: {e}")
         return None
     
+def delete_interview_config(campaign_id: str) -> bool:
+    """Delete an interview configuration from Firestore."""
+    if not firestore_repo:
+        raise ConnectionError("FirestoreRepository is not initialized. Cannot delete campaign.")
     
+    try:
+        firestore_repo.delete(CollectionName.CAMPAIGNS, campaign_id)
+        print(f"Deleted campaign {campaign_id} from Firestore collection: {CollectionName.CAMPAIGNS.value}")
+        return True
+    except Exception as e:
+        print(f"Error deleting campaign {campaign_id} from Firestore: {e}")
+        return False
 
+def get_campaign_responses(campaign_id: str) -> list:
+    """Get all responses for a specific campaign from Firestore."""
+    if not firestore_repo:
+        raise ConnectionError("FirestoreRepository is not initialized. Cannot get responses.")
+    
+    try:
+        responses = firestore_repo.query(CollectionName.INTERVIEWS, 'campaign_id', '==', campaign_id)
+        print(f"Retrieved {len(responses)} responses for campaign {campaign_id} from Firestore.")
+        return responses
+    except Exception as e:
+        print(f"Error retrieving responses for campaign {campaign_id} from Firestore: {e}")
+        return []
+
+def get_campaign_stats(campaign_id: str) -> list:
+    """Calculate and return statistics for a given campaign."""
+    responses = get_campaign_responses(campaign_id)
+    
+    total_submissions = len(responses)
+    completed_interviews = sum(1 for r in responses if not r.get('screenout'))
+    screenouts = total_submissions - completed_interviews
+    
+    completion_rate = (completed_interviews / total_submissions) if total_submissions > 0 else 0
+    
+    stats = [
+        {"metric": "Total Submissions", "value": total_submissions},
+        {"metric": "Completed Interviews", "value": completed_interviews},
+        {"metric": "Screen-outs", "value": screenouts},
+        {"metric": "Completion Rate", "value": round(completion_rate * 100, 2)}
+    ]
+    
+    return stats
+
+def get_overall_stats() -> dict:
+    """Calculate and return overall statistics across all campaigns."""
+    campaigns = get_all_campaigns()
+    # This assumes we need all responses to calculate overall stats.
+    # This could be inefficient if there are many responses.
+    # A more advanced implementation might use direct aggregation in Firestore.
+    
+    if not firestore_repo:
+        raise ConnectionError("FirestoreRepository is not initialized.")
+        
+    all_responses = firestore_repo.list_all(CollectionName.INTERVIEWS)
+    
+    total_campaigns = len(campaigns)
+    total_participants = len(all_responses) # Note: This is total submissions, not unique participants.
+    total_screenouts = sum(1 for r in all_responses if r.get('screenout'))
+    
+    return {
+        "total_campaigns": total_campaigns,
+        "total_participants": total_participants,
+        "total_screenouts": total_screenouts,
+    }
 
 def save_interview_response(response_data: Dict[str, Any]) -> str:
     """Save interview response to Firestore"""
@@ -126,9 +190,7 @@ def upload_audio(local_path: str, storage_path: str) -> str:
         print(f"Error uploading to Firebase Storage: {e}")
         return None
 
-
-
-def get_campaign_responses(campaign_id: str) -> list:
+def get_campaign_responses_old(campaign_id: str) -> list:
     """Get all responses for a specific campaign from local storage"""
     responses = []
     

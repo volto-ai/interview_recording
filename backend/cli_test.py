@@ -36,8 +36,10 @@ class BackendTester:
         campaign_id = f"test_campaign_{uuid.uuid4().hex[:8]}"
         campaign_name = campaign_name or f"Test Campaign {datetime.now().strftime('%H:%M:%S')}"
         campaign_data = {
-            "campaign_id": campaign_id,
+            "id": campaign_id,
             "campaign_name": campaign_name,
+            "campaign_description": "A test campaign created by the CLI tester.",
+            "campaign_type": "interview",
             "questions": [
                 {
                     "id": "q1",
@@ -58,14 +60,18 @@ class BackendTester:
                     "order": 3
                 }
             ],
-            "quality_params": {
-                "min_audio_quality": "high",
-                "background_noise_tolerance": "low"
-            },
-            "screening_params": {
-                "min_experience_years": 2,
-                "required_skills": ["communication", "problem-solving"]
-            }
+            "customer_name": "CLI Test Corp",
+            "completed_url": "http://example.com/completed",
+            "quality_url": "http://example.com/quality",
+            "screenout_url": "http://example.com/screened-out",
+            "demographic_fields": [
+                {"id": "age", "label": "Age", "type": "slider", "min": 18, "max": 99},
+                {"id": "country", "label": "Country", "type": "text"}
+            ],
+            "screenout_questions": [
+                {"id": "sq1", "text": "Do you have experience with Python?", "options": ["Yes", "No"]}
+            ],
+            "voice_capability": False
         }
         
         try:
@@ -97,7 +103,7 @@ class BackendTester:
                 campaigns = result.get('campaigns', [])
                 print(f"   Found {len(campaigns)} campaigns:")
                 for i, campaign in enumerate(campaigns, 1):
-                    print(f"   {i}. {campaign.get('campaign_name', 'Unknown')} (ID: {campaign.get('campaign_id', 'Unknown')})")
+                    print(f"   {i}. {campaign.get('campaign_name', 'Unknown')} (ID: {campaign.get('id', 'Unknown')})")
                 return campaigns
             else:
                 print(f"❌ Failed to list campaigns: {result}")

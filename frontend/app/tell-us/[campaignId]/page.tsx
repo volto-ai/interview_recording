@@ -4,16 +4,18 @@ import { useState, useEffect } from "react"
 import { useParams, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Clock, HelpCircle, Globe, Mic, Info } from "lucide-react"
+import { Clock, HelpCircle, Globe, Mic, Info, Shield, Lock, CheckCircle } from "lucide-react"
 import DemographicsForm from "@/components/demographics-form"
 import ScreenoutForm from "@/components/screenout-form"
 import VoiceInterview from "@/components/voice-interview"
+import Captcha from "@/components/captcha"
 import { getApiUrl, getApiHeaders } from "@/utils/api"
 import LandingPage from "@/components/landing-page"
 
 interface Campaign {
   id: string
   researchName: string
+  campaignDescription?: string
   customerName: string
   screenoutUrl: string
   qualityUrl: string
@@ -30,12 +32,13 @@ interface Campaign {
   screenoutQuestions: Array<{ id: string; text: string; options?: string[]; screenoutValue?: string }>
 }
 
-type InterviewStep = "landing" | "demographics" | "screenout" | "interview" | "completed"
+type InterviewStep = "landing" | "captcha" | "screenout" | "interview" | "demographics" | "completed"
 
 function mapBackendCampaignToCampaign(backend: any): Campaign {
   return {
     id: backend.id,
     researchName: backend.campaign_name || backend.researchName || "",
+    campaignDescription: backend.campaign_description || "",
     customerName: backend.customer_name || "",
     screenoutUrl: backend.screenout_url || "",
     qualityUrl: backend.quality_url || "",
@@ -50,7 +53,7 @@ function mapBackendCampaignToCampaign(backend: any): Campaign {
   }
 }
 
-export default function InterviewPage() {
+export default function ShoutItOutInterviewPage() {
   const params = useParams()
   const searchParams = useSearchParams()
   const campaignId = params.campaignId as string
@@ -60,6 +63,7 @@ export default function InterviewPage() {
   const [demographicsData, setDemographicsData] = useState<Record<string, any>>({})
   const [screenoutData, setScreenoutData] = useState<Record<string, string>>({})
   const [isLoading, setIsLoading] = useState(true)
+  const [captchaVerified, setCaptchaVerified] = useState(false)
 
   useEffect(() => {
     const fetchCampaign = async () => {
@@ -91,9 +95,16 @@ export default function InterviewPage() {
     fetchCampaign();
   }, [campaignId, participantId]);
 
-  const handleDemographicsSubmit = (data: Record<string, any>) => {
-    setDemographicsData(data)
-    setCurrentStep("screenout")
+  const handleCaptchaVerify = (isValid: boolean) => {
+    setCaptchaVerified(isValid)
+    if (isValid) {
+      // Check if there are screenout questions, otherwise go directly to interview
+      if (campaign?.screenoutQuestions && campaign.screenoutQuestions.length > 0) {
+        setCurrentStep("screenout")
+      } else {
+        setCurrentStep("interview")
+      }
+    }
   }
 
   const handleScreenoutSubmit = async (data: Record<string, string>) => {
@@ -149,6 +160,21 @@ export default function InterviewPage() {
   }
 
   const handleInterviewComplete = async () => {
+    // For tell-us, go to demographics after interview
+    if (campaign?.demographicFields && campaign.demographicFields.length > 0) {
+      setCurrentStep("demographics")
+    } else {
+      // If no demographics, complete the interview
+      await submitInterviewData()
+    }
+  }
+
+  const handleDemographicsSubmit = async (data: Record<string, any>) => {
+    setDemographicsData(data)
+    await submitInterviewData()
+  }
+
+  const submitInterviewData = async () => {
     if (!participantId || !campaign) {
       console.error('Participant ID or campaign is missing')
       return
@@ -225,31 +251,47 @@ export default function InterviewPage() {
     }
   };
 
-  // Individuelle Inhalte für Interview Landing Page
-  const landingTitle = "Willkommen, Sie sind eingeladen, an einer Forschung teilzunehmen"
-  const landingSubtitle = "Bitte nehmen Sie sich ein paar Minuten Zeit, um an dieser anonymen Sprachstudie teilzunehmen."
-  const privacyTitle = "Wichtige Hinweise"
+  // Individuelle Inhalte für Tell-us Landing Page
+  const landingTitle = "Ihre Meinung zählt"
+  const landingSubtitle = ""
+  const privacyTitle = "Datenschutz & Anonymität"
   const privacyText =
-    "Ihnen werden einige Fragen gestellt – bitte antworten Sie basierend auf Ihrer persönlichen Perspektive und Erfahrung. " +
-    "Dies ist eine vollständig anonyme Umfrage. Es werden keine persönlichen Daten erfasst, und keine Ihrer Antworten kann auf Sie zurückgeführt werden. " +
-    "Bitte antworten Sie so offen, umfassend und natürlich wie möglich."
-  const steps = [
+    "Diese Umfrage ist vollständig anonym. Es werden keine personenbezogenen Daten erhoben " +
+    "und keine Informationen gespeichert, die Rückschlüsse auf Ihre Identität zulassen. " +
+    "Ziel der Befragung ist es, allgemeine Haltungen und Auffassungen zu bestimmten Themen besser zu verstehen. " +
+    "Sollten Sie dennoch unbeabsichtigt personenbezogene Angaben machen, werden diese vor der Auswertung entfernt."
+  const stepsRaw = [
     {
-      title: "Geschätzte Zeit",
-      description: "3 Minuten",
-      icon: <Clock className="h-5 w-5 text-gray-600" />,
+      title: "Kurze Sicherheitsüberprüfung",
+      description: "Schnelle Verifizierung für optimale Aufnahmequalität.",
+      icon: <Lock className="h-5 w-5 text-gray-600" />,
     },
+    campaign?.screenoutQuestions && campaign.screenoutQuestions.length > 0
+      ? {
+          title: "Qualifikationsfragen",
+          description: "Kurze Fragen zur Teilnahmeberechtigung.",
+          icon: <CheckCircle className="h-5 w-5 text-gray-600" />,
+        }
+      : null,
     {
-      title: "Anzahl der Fragen",
-      description: `${campaign?.questions.length ?? 0} Fragen`,
-      icon: <HelpCircle className="h-5 w-5 text-gray-600" />,
+      title: "Sprachaufnahmen",
+      description: "Ihre Meinung zählt – sprechen Sie frei zu den gestellten Fragen.",
+      icon: <Mic className="h-5 w-5 text-gray-600" />,
     },
+    campaign?.demographicFields && campaign.demographicFields.length > 0
+      ? {
+          title: "Demographische Fragen am Ende",
+          description: "Einige allgemeine Angaben helfen uns, die Ergebnisse besser einzuordnen.",
+          icon: <Shield className="h-5 w-5 text-gray-600" />,
+        }
+      : null,
     {
-      title: "Sprachaufnahme-Anleitung",
-      description: "Sobald Sie eine Frage sehen und das Mikrofonsymbol erscheint, klicken Sie darauf, erlauben Sie den Mikrofonzugriff und starten Sie die Aufnahme. Zum Stoppen einfach erneut klicken.",
-      icon: <Mic className="h-5 w-5 text-slate-800" />,
+      title: "Dauer: ca. 2-3 Minuten",
+      description: undefined,
+      icon: <Clock className="h-5 w-5 text-gray-500" />,
     },
-  ]
+  ];
+  const steps = stepsRaw.filter((s): s is NonNullable<typeof s> => Boolean(s));
 
   if (isLoading) {
     return (
@@ -278,45 +320,96 @@ export default function InterviewPage() {
   if (currentStep === "landing") {
     return (
       <LandingPage
-        icon={<Mic className="h-10 w-10 text-black" />}
+        icon={<Mic className="h-10 w-10 text-gray-600" />}
         title={landingTitle}
         subtitle={landingSubtitle}
         privacyTitle={privacyTitle}
         privacyText={privacyText}
         steps={steps}
-        onStart={() => setCurrentStep("demographics")}
-        startLabel="Umfrage starten"
+        onStart={() => setCurrentStep("captcha")}
+        startLabel="Weiter"
         buttonClassName="bg-black hover:bg-neutral-800 text-white"
         buttonBelowCard={true}
       />
     )
   }
 
-  if (currentStep === "demographics") {
-    return <DemographicsForm fields={campaign.demographicFields} onSubmit={handleDemographicsSubmit} />
+  if (currentStep === "captcha") {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="w-full max-w-md">
+          <Captcha onVerify={handleCaptchaVerify} />
+        </div>
+      </div>
+    )
   }
 
   if (currentStep === "screenout") {
-    return <ScreenoutForm questions={campaign.screenoutQuestions} onSubmit={handleScreenoutSubmit} />
+    return (
+      <ScreenoutForm
+        questions={campaign.screenoutQuestions}
+        onSubmit={handleScreenoutSubmit}
+      />
+    )
   }
 
   if (currentStep === "interview") {
-    return <VoiceInterview 
-      questions={campaign.questions} 
-      campaignId={campaignId} 
-      participantId={participantId}
-      onComplete={handleInterviewComplete} 
-    />
+    return (
+      <VoiceInterview
+        questions={campaign.questions}
+        campaignId={campaign.id}
+        participantId={participantId}
+        onComplete={handleInterviewComplete}
+      />
+    )
   }
 
-  return (
-    <div className="min-h-screen flex items-center justify-center">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>Interview Completed</CardTitle>
-          <CardDescription>Thank you for participating in our research!</CardDescription>
-        </CardHeader>
-      </Card>
-    </div>
-  )
+  if (currentStep === "demographics") {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="w-full max-w-2xl">
+          <Card>
+            <CardHeader className="text-center">
+              <CardTitle>Fast geschafft!</CardTitle>
+              <CardDescription>
+                Bitte beantworten Sie noch ein paar kurze Fragen zu Ihrer Person. 
+                Diese Informationen helfen uns, die Ergebnisse besser zu verstehen.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <DemographicsForm
+                fields={campaign.demographicFields}
+                onSubmit={handleDemographicsSubmit}
+              />
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    )
+  }
+
+  if (currentStep === "completed") {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <Card className="w-full max-w-2xl">
+          <CardHeader className="text-center">
+            <CardTitle>Umfrage abgeschlossen</CardTitle>
+            <CardDescription>Vielen Dank für Ihre Teilnahme an unserer Umfrage!</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
+              <p className="text-green-700 text-sm">
+                Ihre Antworten wurden erfolgreich übermittelt und werden zur Verbesserung unserer Services verwendet.
+              </p>
+            </div>
+            <Button onClick={() => window.close()} className="w-full bg-blue-600 hover:bg-blue-700">
+              Schließen
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  return null;
 }

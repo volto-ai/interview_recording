@@ -41,9 +41,9 @@ def save_interview_config(config_data: Dict[str, Any]) -> str:
     if not firestore_repo:
         raise ConnectionError("FirestoreRepository is not initialized. Cannot save campaign.")
 
-    campaign_id = config_data.get('campaign_id')
+    campaign_id = config_data.get('id')
     if not campaign_id:
-        raise ValueError("campaign_id must be present in config_data")
+        raise ValueError("id must be present in config_data")
 
     try:
         firestore_repo.create(CollectionName.CAMPAIGNS, campaign_id, config_data)

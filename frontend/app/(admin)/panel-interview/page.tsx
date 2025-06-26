@@ -19,7 +19,7 @@ import { getApiUrl, getApiHeaders } from "@/utils/api"
 import { useToast } from "@/hooks/use-toast"
 
 interface Campaign {
-  campaign_id: string
+  id: string
   campaign_name: string
   campaign_type: string
   created_at: string
@@ -117,7 +117,7 @@ export default function PanelInterviewPage() {
             ) : campaigns.length > 0 ? (
               <div className="space-y-4">
                 {campaigns.map((campaign) => (
-                  <div key={campaign.campaign_id} className="flex items-center justify-between p-4 border rounded-lg">
+                  <div key={campaign.id} className="flex items-center justify-between p-4 border rounded-lg">
                     <div>
                       <h3 className="font-semibold">{campaign.campaign_name}</h3>
                       <p className="text-sm text-muted-foreground">
@@ -125,13 +125,13 @@ export default function PanelInterviewPage() {
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Link href={`/interview/${campaign.campaign_id}?uid=preview`} target="_blank">
+                      <Link href={`/interview/${campaign.id}?uid=preview`} target="_blank">
                         <Button variant="outline" size="icon"><Eye className="h-4 w-4" /></Button>
                       </Link>
-                      <Link href={`/panel-interview/campaign?campaignId=${campaign.campaign_id}`}>
+                      <Link href={`/panel-interview/campaign?campaignId=${campaign.id}`}>
                         <Button variant="outline" size="icon"><Edit className="h-4 w-4" /></Button>
                       </Link>
-                      <Button variant="destructive" size="icon" onClick={() => setCampaignToDelete(campaign.campaign_id)}>
+                      <Button variant="destructive" size="icon" onClick={() => setCampaignToDelete(campaign.id)}>
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>

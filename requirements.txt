@@ -7,3 +7,4 @@ numpy==1.26.4
 firebase-admin
 typing-extensions==4.8.0
 gunicorn==22.0.0
+python-dotenv==1.0.0

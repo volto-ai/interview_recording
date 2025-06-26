@@ -4,6 +4,9 @@ import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { VariantProps, cva } from "class-variance-authority"
 import { PanelLeft } from "lucide-react"
+import Link from "next/link"
+import { usePathname } from "next/navigation"
+import { ClipboardList, LayoutDashboard, Megaphone, Ear } from "lucide-react"
 
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
@@ -734,6 +737,46 @@ const SidebarMenuSubButton = React.forwardRef<
   )
 })
 SidebarMenuSubButton.displayName = "SidebarMenuSubButton"
+
+const navItems = [
+  { href: "/", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/panel-interview", label: "Panel Interview", icon: ClipboardList },
+  { href: "/tell-us", label: "Context Listening", icon: Megaphone },
+  { href: "/social-listening", label: "Social Listening", icon: Ear },
+]
+
+export function AdminSidebar() {
+  const pathname = usePathname()
+
+  return (
+    <aside className="w-64 flex-shrink-0 border-r bg-white">
+      <div className="flex h-full flex-col">
+        <div className="p-4 border-b">
+          <h2 className="text-xl font-semibold">Voice Platform</h2>
+        </div>
+        <nav className="flex-1 space-y-1 p-2">
+          {navItems.map((item) => {
+            const isActive = pathname === item.href || (item.href !== "/admin" && pathname.startsWith(item.href))
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                  isActive
+                    ? "bg-slate-100 text-slate-900"
+                    : "text-slate-600 hover:bg-slate-50"
+                }`}
+              >
+                <item.icon className="h-5 w-5" />
+                <span>{item.label}</span>
+              </Link>
+            )
+          })}
+        </nav>
+      </div>
+    </aside>
+  )
+}
 
 export {
   Sidebar,

@@ -72,6 +72,25 @@ if [ -z "$BACKEND_URL" ]; then
 fi
 echo "✅ Backend URL: $BACKEND_URL"
 
+# --- Read .env and prepare env vars for Cloud Run ---
+ENV_FILE="frontend/.env"
+ENV_VARS=""
+if [ -f "$ENV_FILE" ]; then
+  while IFS='=' read -r key value; do
+    # Ignore comments and empty lines
+    if [[ ! "$key" =~ ^# && -n "$key" && -n "$value" ]]; then
+      # Remove possible quotes and export as KEY=VALUE
+      clean_key=$(echo "$key" | xargs)
+      clean_value=$(echo "$value" | xargs | sed 's/^"//;s/"$//')
+      if [ -z "$ENV_VARS" ]; then
+        ENV_VARS="${clean_key}=${clean_value}"
+      else
+        ENV_VARS="${ENV_VARS},${clean_key}=${clean_value}"
+      fi
+    fi
+  done < "$ENV_FILE"
+fi
+
 # --- Frontend Deployment ---
 if [ "$DEPLOY_FRONTEND" = true ]; then
   echo "🚀 Starting Frontend Deployment..."
@@ -94,7 +113,7 @@ if [ "$DEPLOY_FRONTEND" = true ]; then
     --platform=managed \
     --port=8080 \
     --allow-unauthenticated \
-    --set-env-vars="NEXT_PUBLIC_BACKEND_URL=$BACKEND_URL"
+    --set-env-vars="NEXT_PUBLIC_BACKEND_URL=$BACKEND_URL${ENV_VARS:+,$ENV_VARS}"
 
   echo "✅✅✅ Deployment Complete! ✅✅✅"
 else

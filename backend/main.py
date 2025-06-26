@@ -1,17 +1,24 @@
 from flask import Flask, request, jsonify, send_file, redirect
 from flask_cors import CORS
 import os
+from dotenv import load_dotenv
 import uuid
 from datetime import datetime
-from models import InterviewConfigurator, InterviewResponse, Question, Demographics
+from models import Campaign, InterviewResponse, Question, Demographics
 from storage_utils import (
     save_interview_config, 
     get_interview_config, 
+    delete_interview_config,
     save_interview_response,
     upload_audio,
     get_all_campaigns,
-    get_campaign_responses
+    get_campaign_responses,
+    get_campaign_stats,
+    get_overall_stats
 )
+
+# Load environment variables from .env file
+load_dotenv()
 
 app = Flask(__name__)
 CORS(app)
@@ -19,6 +26,19 @@ CORS(app)
 # Temporary storage for recordings before upload
 UPLOAD_FOLDER = '../recordings'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+API_KEY = os.environ.get("API_KEY", "")
+
+def require_api_key(f):
+    def wrapper(*args, **kwargs):
+        if request.path == "/api/health":
+            return f(*args, **kwargs)
+        api_key = request.headers.get("X-API-Key")
+        if api_key != API_KEY:
+            return jsonify({"error": "Invalid API key"}), 401
+        return f(*args, **kwargs)
+    wrapper.__name__ = f.__name__
+    return wrapper
 
 @app.route('/api/health', methods=['GET'])
 def health_check():
@@ -32,20 +52,23 @@ def create_campaign():
         data = request.json
         print(f"Received data (frontend payload): {data}")
         
-        generated_campaign_id = str(uuid.uuid4())
-        print(f"Generated campaign_id: {generated_campaign_id}")
-        config = InterviewConfigurator(**data)
+        # The frontend might send an 'id' field, but we generate a new one for new campaigns.
+        data.pop('id', None)
         
+        config = Campaign(**data)
+        
+        # Generate a new ID for the campaign
+        config.id = str(uuid.uuid4())
+        print(f"Generated campaign id: {config.id}")
+
         config_dict = config.model_dump()
         
-        config_dict['campaign_id'] = generated_campaign_id
-        config_dict['created_at'] = config_dict['created_at'].isoformat()
+        # No need to manually set created_at, model default does it.
         
-        save_interview_config(config_dict) # save_interview_config returns the id, but we already have it
-        print(f"Campaign saved with ID: {generated_campaign_id}")
+        save_interview_config(config_dict)
+        print(f"Campaign saved with ID: {config.id}")
         
-        # Return the generated campaign_id to the frontend
-        return jsonify({"campaign_id": generated_campaign_id, "message": "Campaign created successfully"}), 201
+        return jsonify({"id": config.id, "message": "Campaign created successfully"}), 201
     except Exception as e:
         print(f"ERROR in create_campaign: {type(e).__name__}: {str(e)}")
         import traceback
@@ -61,15 +84,15 @@ def update_campaign(campaign_id):
         print(f"Received data for update: {data_from_request}")
 
         data_for_model = data_from_request.copy()
-        data_for_model['campaign_id'] = campaign_id # Override any campaign_id in body with ID from URL
+        data_for_model['id'] = campaign_id
 
-        config = InterviewConfigurator(**data_for_model)
+        config = Campaign(**data_for_model)
         config_dict_to_save = config.model_dump()
 
-        save_interview_config(config_dict_to_save) # Reuses save_interview_config for upsert
+        save_interview_config(config_dict_to_save)
         print(f"Campaign updated for ID: {campaign_id}")
         
-        return jsonify({"campaign_id": campaign_id, "message": "Campaign updated successfully"}), 200
+        return jsonify({"id": campaign_id, "message": "Campaign updated successfully"}), 200
     except Exception as e:
         print(f"ERROR in update_campaign for ID {campaign_id}: {type(e).__name__}: {str(e)}")
         import traceback
@@ -110,6 +133,50 @@ def get_campaign(campaign_id):
             return jsonify(config), 200
         return jsonify({"error": "Campaign not found"}), 404
     except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/campaigns/<campaign_id>', methods=['DELETE'])
+def delete_campaign(campaign_id):
+    """Delete an interview campaign"""
+    try:
+        print(f"\n=== DELETE CAMPAIGN ENDPOINT CALLED for campaign_id: {campaign_id} ===")
+        
+        success = delete_interview_config(campaign_id)
+        
+        if success:
+            print(f"Campaign {campaign_id} deleted successfully.")
+            return jsonify({"message": f"Campaign {campaign_id} deleted successfully"}), 200
+        else:
+            print(f"Failed to delete campaign {campaign_id}.")
+            return jsonify({"error": f"Failed to delete campaign {campaign_id}"}), 500
+    except Exception as e:
+        print(f"ERROR in delete_campaign for ID {campaign_id}: {type(e).__name__}: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/campaigns/<campaign_id>/stats', methods=['GET'])
+def get_stats_for_campaign(campaign_id):
+    """Get statistics for a specific campaign"""
+    try:
+        stats = get_campaign_stats(campaign_id)
+        return jsonify({"stats": stats}), 200
+    except Exception as e:
+        print(f"ERROR in get_stats_for_campaign for ID {campaign_id}: {type(e).__name__}: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/stats', methods=['GET'])
+def get_overall_stats_endpoint():
+    """Get overall statistics for all campaigns and interviews."""
+    try:
+        stats = get_overall_stats()
+        return jsonify(stats), 200
+    except Exception as e:
+        print(f"ERROR in get_overall_stats_endpoint: {type(e).__name__}: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/recordings/upload', methods=['POST'])
@@ -228,6 +295,12 @@ def handle_screenout():
             
     except Exception as e:
         return jsonify({"error": str(e)}), 400
+
+# Apply the decorator to all API endpoints except /api/health
+for rule in app.url_map.iter_rules():
+    if rule.rule.startswith("/api/") and rule.rule != "/api/health":
+        view_func = app.view_functions[rule.endpoint]
+        app.view_functions[rule.endpoint] = require_api_key(view_func)
 
 if __name__ == '__main__':
     app.run(debug=True, port=8000) 

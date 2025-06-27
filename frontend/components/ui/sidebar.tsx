@@ -741,7 +741,7 @@ SidebarMenuSubButton.displayName = "SidebarMenuSubButton"
 const navItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/panel-interview", label: "Panel Interview", icon: ClipboardList },
-  { href: "/tell-us", label: "Context Listening", icon: Megaphone },
+  { href: "/tell-us", label: "Customer Pool", icon: Megaphone },
   { href: "/social-listening", label: "Social Listening", icon: Ear },
 ]
 

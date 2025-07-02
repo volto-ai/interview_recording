@@ -1,13 +1,14 @@
 {
-  "hosting": {
-    "source": ".",
+  "apphosting": {
+    "backendId": "prod-volto-interviews",
+    "rootDir": "/",
     "ignore": [
-      "firebase.json",
-      "**/.*",
-      "**/node_modules/**"
+      "node_modules",
+      ".git",
+      "firebase-debug.log",
+      "firebase-debug.*.log",
+      "functions"
     ],
-    "frameworksBackend": {
-      "region": "europe-west1"
-    }
+    "alwaysDeployFromSource": true
   }
 }

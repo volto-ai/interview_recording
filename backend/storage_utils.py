@@ -78,8 +78,8 @@ def get_interview_config(campaign_id: str) -> Dict[str, Any]:
         return campaign
     except Exception as e:
         print(f"Error retrieving campaign {campaign_id} from Firestore: {e}")
-        return None
-    
+    return None
+
 def delete_interview_config(campaign_id: str) -> bool:
     """Delete an interview configuration from Firestore."""
     if not firestore_repo:
@@ -158,12 +158,38 @@ def save_interview_response(response_data: Dict[str, Any]) -> str:
         response_data['id'] = response_id
         response_data['submitted_at'] = datetime.now().isoformat()
         
+        print(f"\n=== SAVING INTERVIEW RESPONSE TO FIRESTORE ===")
+        print(f"Response ID: {response_id}")
+        print(f"Campaign ID: {response_data.get('campaign_id', 'N/A')}")
+        print(f"Participant ID: {response_data.get('participant_id', 'N/A')}")
+        print(f"Submitted at: {response_data.get('submitted_at', 'N/A')}")
+        
+        # Log demographics data
+        demographics = response_data.get('demographics', {})
+        if demographics:
+            print(f"Demographics data:")
+            for key, value in demographics.items():
+                print(f"  - {key}: {value}")
+        else:
+            print(f"Demographics: None or empty")
+        
+        # Log screenout status
+        screenout = response_data.get('screenout', False)
+        print(f"Screenout: {screenout}")
+        
+        print(f"Collection: {CollectionName.INTERVIEWS.value}")
+        print(f"Full response data: {response_data}")
+        
         # Save to Firestore
         firestore_repo.create(CollectionName.INTERVIEWS, response_id, response_data)
-        print(f"Saved interview response to Firestore, collection: {CollectionName.INTERVIEWS.value}, id: {response_id}")
+        print(f"✅ Successfully saved interview response to Firestore")
+        print(f"=== END SAVING INTERVIEW RESPONSE ===\n")
         return response_id
     except Exception as e:
-        print(f"Error saving interview response to Firestore: {e}")
+        print(f"❌ Error saving interview response to Firestore: {e}")
+        print(f"Response data that failed to save: {response_data}")
+        import traceback
+        traceback.print_exc()
         raise RuntimeError(f"Failed to save interview response to Firestore.") from e
 
 def upload_audio(local_path: str, storage_path: str) -> str:
@@ -183,7 +209,7 @@ def upload_audio(local_path: str, storage_path: str) -> str:
         
         print(f"Successfully uploaded audio file to Firebase Storage: {storage_path}")
         print(f"Public URL: {public_url}")
-        
+    
         return public_url
         
     except Exception as e:

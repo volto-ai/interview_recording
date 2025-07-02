@@ -13,8 +13,8 @@ function TellUsCreatePageContent() {
     <CampaignForm
       campaignType="tell-us"
       campaignId={campaignId}
-      onBack={() => router.push('/tell-us')}
-      backUrl="/tell-us"
+      onBack={() => router.push('/admin/tell-us')}
+      backUrl="/admin/tell-us"
       title="Context Listening Campaign"
       description="Configure a new campaign for quick, direct feedback."
     />

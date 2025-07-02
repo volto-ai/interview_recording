@@ -58,7 +58,8 @@ if [ "$DEPLOY_BACKEND" = true ]; then
     --region="$REGION" \
     --platform=managed \
     --port=8000 \
-    --allow-unauthenticated # In a real scenario, you might restrict this
+    --allow-unauthenticated \
+    --set-env-vars="ENVIRONMENT=dev" # In a real scenario, you might restrict this
 else
   echo "🏃 Skipping backend deployment as requested."
 fi
@@ -74,8 +75,21 @@ echo "✅ Backend URL: $BACKEND_URL"
 
 # --- Read .env and prepare env vars for Cloud Run ---
 ENV_FILE="frontend/.env"
+DEV_ENV_FILE="frontend/.env.development"
+
+# Check for development environment file first, then fall back to regular .env
+if [ -f "$DEV_ENV_FILE" ]; then
+  echo "📁 Using development environment file: $DEV_ENV_FILE"
+  ENV_FILE="$DEV_ENV_FILE"
+elif [ -f "$ENV_FILE" ]; then
+  echo "📁 Using regular environment file: $ENV_FILE"
+else
+  echo "⚠️  No environment file found. Using default configuration."
+  ENV_FILE=""
+fi
+
 ENV_VARS=""
-if [ -f "$ENV_FILE" ]; then
+if [ -n "$ENV_FILE" ] && [ -f "$ENV_FILE" ]; then
   while IFS='=' read -r key value; do
     # Ignore comments and empty lines
     if [[ ! "$key" =~ ^# && -n "$key" && -n "$value" ]]; then

@@ -95,7 +95,7 @@ export default function ShoutItOutPage() {
             <h1 className="text-3xl font-bold">Context Listening Campaigns</h1>
             <p className="text-muted-foreground">Manage your existing campaigns or create a new one.</p>
           </div>
-          <Link href="/tell-us/create">
+          <Link href="/admin/tell-us/create">
             <Button>
               <Plus className="mr-2 h-4 w-4" /> Create New Context Listening
             </Button>
@@ -125,10 +125,10 @@ export default function ShoutItOutPage() {
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Link href={`/tell-us/${campaign.id}?uid=preview`} target="_blank">
+                      <Link href={`/tell-us/${campaign.id}`} target="_blank">
                         <Button variant="outline" size="icon"><Eye className="h-4 w-4" /></Button>
                       </Link>
-                      <Link href={`/tell-us/create?campaignId=${campaign.id}`}>
+                      <Link href={`/admin/tell-us/create?campaignId=${campaign.id}`}>
                         <Button variant="outline" size="icon"><Edit className="h-4 w-4" /></Button>
                       </Link>
                       <Button variant="destructive" size="icon" onClick={() => setCampaignToDelete(campaign.id)}>

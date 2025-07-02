@@ -217,8 +217,22 @@ def upload_recording():
 def submit_interview():
     """Submit a complete interview response"""
     try:
+        print(f"\n=== INTERVIEW SUBMISSION ENDPOINT CALLED ===")
         data = request.json
-        print(f"Received data for submit_interview: {data}")
+        print(f"Raw request data: {data}")
+        
+        # Validate required fields
+        required_fields = ['campaign_id', 'participant_id', 'demographics']
+        missing_fields = [field for field in required_fields if field not in data]
+        if missing_fields:
+            print(f"❌ Missing required fields: {missing_fields}")
+            return jsonify({"error": f"Missing required fields: {missing_fields}"}), 400
+        
+        print(f"Campaign ID: {data['campaign_id']}")
+        print(f"Participant ID: {data['participant_id']}")
+        print(f"Demographics data: {data['demographics']}")
+        
+        # Create InterviewResponse object
         response = InterviewResponse(
             campaign_id=data['campaign_id'],
             participant_id=data['participant_id'],
@@ -226,10 +240,18 @@ def submit_interview():
             submitted_at=datetime.now().isoformat()
         )
         
+        print(f"✅ InterviewResponse object created successfully")
+        print(f"Validated demographics: {response.demographics.model_dump()}")
+        
         # Convert to dict for Firebase
         response_dict = response.model_dump()
         response_dict['submitted_at'] = response_dict['submitted_at'].isoformat()
+        
+        print(f"Calling save_interview_response with data: {response_dict}")
         response_id = save_interview_response(response_dict)
+        
+        print(f"✅ Interview saved successfully with response ID: {response_id}")
+        print(f"=== END INTERVIEW SUBMISSION ===\n")
 
         return jsonify({
             "success": True,
@@ -238,6 +260,9 @@ def submit_interview():
         }), 200
         
     except Exception as e:
+        print(f"❌ Error in submit_interview: {type(e).__name__}: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({"error": str(e)}), 400
 
 @app.route('/api/campaigns/<campaign_id>/responses', methods=['GET'])
@@ -267,13 +292,22 @@ def serve_audio(filename):
 def handle_screenout():
     """Handle participant screenout"""
     try:
+        print(f"\n=== SCREENOUT ENDPOINT CALLED ===")
         data = request.json
+        print(f"Raw screenout request data: {data}")
+        
         campaign_id = data.get('campaign_id')
         participant_id = data.get('participant_id')
         demographics = data.get('demographics', {})
         screenout_url = data.get('screenout_url')
         
+        print(f"Campaign ID: {campaign_id}")
+        print(f"Participant ID: {participant_id}")
+        print(f"Demographics: {demographics}")
+        print(f"Screenout URL: {screenout_url}")
+        
         if not all([campaign_id, participant_id]):
+            print(f"❌ Missing required fields: campaign_id={campaign_id}, participant_id={participant_id}")
             return jsonify({"error": "Missing required fields"}), 400
             
         # Create screenout response
@@ -285,8 +319,13 @@ def handle_screenout():
             "submitted_at": datetime.now().isoformat()
         }
         
+        print(f"Screenout data to save: {screenout_data}")
+        
         # Save to storage
-        save_interview_response(screenout_data)
+        response_id = save_interview_response(screenout_data)
+        
+        print(f"✅ Screenout saved successfully with response ID: {response_id}")
+        print(f"=== END SCREENOUT ===\n")
         
         return jsonify({
             "success": True,
@@ -294,6 +333,9 @@ def handle_screenout():
         }), 200
             
     except Exception as e:
+        print(f"❌ Error in handle_screenout: {type(e).__name__}: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({"error": str(e)}), 400
 
 # Apply the decorator to all API endpoints except /api/health

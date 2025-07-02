@@ -95,7 +95,7 @@ export default function PanelInterviewPage() {
             <h1 className="text-3xl font-bold">Panel Interviews</h1>
             <p className="text-muted-foreground">Manage your existing campaigns or create a new one.</p>
           </div>
-          <Link href="/panel-interview/campaign">
+          <Link href="/admin/panel-interview/campaign">
             <Button>
               <Plus className="mr-2 h-4 w-4" /> Create New Interview
             </Button>
@@ -128,7 +128,7 @@ export default function PanelInterviewPage() {
                       <Link href={`/interview/${campaign.id}?uid=preview`} target="_blank">
                         <Button variant="outline" size="icon"><Eye className="h-4 w-4" /></Button>
                       </Link>
-                      <Link href={`/panel-interview/campaign?campaignId=${campaign.id}`}>
+                      <Link href={`/admin/panel-interview/campaign?campaignId=${campaign.id}`}>
                         <Button variant="outline" size="icon"><Edit className="h-4 w-4" /></Button>
                       </Link>
                       <Button variant="destructive" size="icon" onClick={() => setCampaignToDelete(campaign.id)}>

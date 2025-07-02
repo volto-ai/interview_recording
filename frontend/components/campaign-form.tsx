@@ -131,13 +131,13 @@ function mapFormStateToBackendPayload(form: {
         order: index
       })),
     demographic_fields: form.demographicFields.map(field => ({
-      id: field.id,
-      label: field.label,
-      type: field.type,
-      ...(field.options && { options: field.options }),
-      ...(field.min !== undefined && { min: field.min }),
-      ...(field.max !== undefined && { max: field.max }),
-    })),
+        id: field.id,
+        label: field.label,
+        type: field.type,
+        ...(field.options && { options: field.options }),
+        ...(field.min !== undefined && { min: field.min }),
+        ...(field.max !== undefined && { max: field.max }),
+      })),
   };
 
   if (campaignType === 'interview') {
@@ -147,10 +147,10 @@ function mapFormStateToBackendPayload(form: {
     payload.screenout_questions = form.screenoutQuestions
       .filter((q) => q.text.trim())
       .map(q => ({
-        id: q.id,
-        text: q.text,
-        options: q.options,
-        screenoutValue: q.screenoutValue,
+          id: q.id,
+          text: q.text,
+          options: q.options,
+          screenoutValue: q.screenoutValue,
       }));
   }
 
@@ -304,20 +304,58 @@ export default function CampaignForm({ campaignType, campaignId, onBack, backUrl
     }
   }
 
-  const addQuestion = () => setQuestions([...questions, { id: `${Date.now()}`, text: "", time_limit_sec: 60 }])
-  const removeQuestion = (id: string) => setQuestions(questions.filter((q) => q.id !== id))
+  const addQuestion = () => {
+    const nextId = (questions.length + 1).toString()
+    setQuestions([...questions, { id: nextId, text: "", time_limit_sec: 60 }])
+  }
+  
+  const removeQuestion = (id: string) => {
+    const filteredQuestions = questions.filter((q) => q.id !== id)
+    // Renumber questions to maintain sequential order
+    const renumberedQuestions = filteredQuestions.map((q, index) => ({
+      ...q,
+      id: (index + 1).toString()
+    }))
+    setQuestions(renumberedQuestions)
+  }
+  
   const updateQuestion = (id: string, newValues: Partial<Omit<Question, 'id'>>) => {
     setQuestions(questions.map((q) => (q.id === id ? { ...q, ...newValues } : q)))
   }
 
-  const addDemographicField = () => setDemographicFields([...demographicFields, { id: `${Date.now()}`, label: "", type: "text" }])
-  const removeDemographicField = (id: string) => setDemographicFields(demographicFields.filter((field) => field.id !== id))
+  const addDemographicField = () => {
+    const nextId = (demographicFields.length + 1).toString()
+    setDemographicFields([...demographicFields, { id: nextId, label: "", type: "text" }])
+  }
+  
+  const removeDemographicField = (id: string) => {
+    const filteredFields = demographicFields.filter((field) => field.id !== id)
+    // Renumber fields to maintain sequential order
+    const renumberedFields = filteredFields.map((field, index) => ({
+      ...field,
+      id: (index + 1).toString()
+    }))
+    setDemographicFields(renumberedFields)
+  }
+  
   const updateDemographicField = (id: string, updates: Partial<DemographicField>) => {
     setDemographicFields(demographicFields.map((field) => field.id === id ? { ...field, ...updates } : field))
   }
 
-  const addScreenoutQuestion = () => setScreenoutQuestions([...screenoutQuestions, { id: `${Date.now()}`, text: "", options: ["Ja", "Nein"] }])
-  const removeScreenoutQuestion = (id: string) => setScreenoutQuestions(screenoutQuestions.filter((q) => q.id !== id))
+  const addScreenoutQuestion = () => {
+    const nextId = (screenoutQuestions.length + 1).toString()
+    setScreenoutQuestions([...screenoutQuestions, { id: nextId, text: "", options: ["Ja", "Nein"] }])
+  }
+  
+  const removeScreenoutQuestion = (id: string) => {
+    const filteredQuestions = screenoutQuestions.filter((q) => q.id !== id)
+    // Renumber questions to maintain sequential order
+    const renumberedQuestions = filteredQuestions.map((q, index) => ({
+      ...q,
+      id: (index + 1).toString()
+    }))
+    setScreenoutQuestions(renumberedQuestions)
+  }
   const updateScreenoutQuestion = (id: string, text: string) => {
     setScreenoutQuestions(screenoutQuestions.map((q) => (q.id === id ? { ...q, text } : q)))
   }
@@ -537,86 +575,86 @@ export default function CampaignForm({ campaignType, campaignId, onBack, backUrl
             ) : (
               // Regular demographics fields
               <>
-                {demographicFields.map((field) => (
-                  <div key={field.id} className="grid grid-cols-6 gap-4 items-end">
-                    <div className="col-span-2">
-                      <Label>Field Label</Label>
+            {demographicFields.map((field) => (
+              <div key={field.id} className="grid grid-cols-6 gap-4 items-end">
+                <div className="col-span-2">
+                  <Label>Field Label</Label>
+                  <Input
+                    value={field.label}
+                    onChange={(e) => updateDemographicField(field.id, { label: e.target.value })}
+                    placeholder="Field label"
+                    readOnly={isViewMode}
+                  />
+                </div>
+                <div className="col-span-1">
+                  <Label>Type</Label>
+                  <select
+                    className="w-full p-2 border rounded"
+                    value={field.type}
+                    onChange={(e) => updateDemographicField(field.id, { type: e.target.value as any })}
+                    disabled={isViewMode}
+                  >
+                    <option value="text">Text</option>
+                    <option value="select">Select</option>
+                    <option value="slider">Slider</option>
+                  </select>
+                </div>
+                {field.type === "select" && (
+                  <div className="col-span-2">
+                    <Label>Options (comma separated)</Label>
+                    <Input
+                      value={field.options?.join(", ") || ""}
+                      onChange={(e) =>
+                        updateDemographicField(field.id, {
+                          options: e.target.value.split(",").map((s) => s.trim()),
+                        })
+                      }
+                      placeholder="Option 1, Option 2, Option 3"
+                      readOnly={isViewMode}
+                    />
+                  </div>
+                )}
+                {field.type === "slider" && (
+                  <>
+                    <div className="col-span-1">
+                      <Label>Min</Label>
                       <Input
-                        value={field.label}
-                        onChange={(e) => updateDemographicField(field.id, { label: e.target.value })}
-                        placeholder="Field label"
+                        type="number"
+                        value={field.min || 0}
+                        onChange={(e) => updateDemographicField(field.id, { min: Number.parseInt(e.target.value) })}
                         readOnly={isViewMode}
                       />
                     </div>
                     <div className="col-span-1">
-                      <Label>Type</Label>
-                      <select
-                        className="w-full p-2 border rounded"
-                        value={field.type}
-                        onChange={(e) => updateDemographicField(field.id, { type: e.target.value as any })}
-                        disabled={isViewMode}
-                      >
-                        <option value="text">Text</option>
-                        <option value="select">Select</option>
-                        <option value="slider">Slider</option>
-                      </select>
+                      <Label>Max</Label>
+                      <Input
+                        type="number"
+                        value={field.max || 100}
+                        onChange={(e) => updateDemographicField(field.id, { max: Number.parseInt(e.target.value) })}
+                        readOnly={isViewMode}
+                      />
                     </div>
-                    {field.type === "select" && (
-                      <div className="col-span-2">
-                        <Label>Options (comma separated)</Label>
-                        <Input
-                          value={field.options?.join(", ") || ""}
-                          onChange={(e) =>
-                            updateDemographicField(field.id, {
-                              options: e.target.value.split(",").map((s) => s.trim()),
-                            })
-                          }
-                          placeholder="Option 1, Option 2, Option 3"
-                          readOnly={isViewMode}
-                        />
-                      </div>
-                    )}
-                    {field.type === "slider" && (
-                      <>
-                        <div className="col-span-1">
-                          <Label>Min</Label>
-                          <Input
-                            type="number"
-                            value={field.min || 0}
-                            onChange={(e) => updateDemographicField(field.id, { min: Number.parseInt(e.target.value) })}
-                            readOnly={isViewMode}
-                          />
-                        </div>
-                        <div className="col-span-1">
-                          <Label>Max</Label>
-                          <Input
-                            type="number"
-                            value={field.max || 100}
-                            onChange={(e) => updateDemographicField(field.id, { max: Number.parseInt(e.target.value) })}
-                            readOnly={isViewMode}
-                          />
-                        </div>
-                      </>
-                    )}
-                    {field.type === "text" && (
-                      <div className="col-span-2" />
-                    )}
-                    <div className="col-span-1 flex justify-end">
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => removeDemographicField(field.id)}
-                        disabled={isViewMode || demographicFields.length === 1}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-                <Button variant="outline" onClick={addDemographicField} disabled={isViewMode}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Demographic Field
-                </Button>
+                  </>
+                )}
+                {field.type === "text" && (
+                  <div className="col-span-2" />
+                )}
+                <div className="col-span-1 flex justify-end">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => removeDemographicField(field.id)}
+                    disabled={isViewMode || demographicFields.length === 1}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+            <Button variant="outline" onClick={addDemographicField} disabled={isViewMode}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Demographic Field
+            </Button>
               </>
             )}
           </CardContent>

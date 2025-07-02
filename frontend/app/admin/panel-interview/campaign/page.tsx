@@ -13,7 +13,7 @@ function PanelInterviewCampaignPageContent() {
       campaignType="interview"
       campaignId={campaignId}
       onBack={() => window.history.back()}
-      backUrl="/panel-interview"
+      backUrl="/admin/panel-interview"
       title="Interview Campaign"
       description="Set up the basic details for your research campaign"
     />

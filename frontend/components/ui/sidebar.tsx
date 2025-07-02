@@ -739,10 +739,10 @@ const SidebarMenuSubButton = React.forwardRef<
 SidebarMenuSubButton.displayName = "SidebarMenuSubButton"
 
 const navItems = [
-  { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/panel-interview", label: "Panel Interview", icon: ClipboardList },
-  { href: "/tell-us", label: "Customer Pool", icon: Megaphone },
-  { href: "/social-listening", label: "Social Listening", icon: Ear },
+  { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/admin/panel-interview", label: "Panel Interview", icon: ClipboardList },
+  { href: "/admin/tell-us", label: "Tell Us Campaigns", icon: Megaphone },
+  { href: "/admin/social-listening", label: "Social Listening", icon: Ear },
 ]
 
 export function AdminSidebar() {

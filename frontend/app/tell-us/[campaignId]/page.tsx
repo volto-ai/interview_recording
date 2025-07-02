@@ -32,44 +32,49 @@ interface Campaign {
   screenoutQuestions: Array<{ id: string; text: string; options?: string[]; screenoutValue?: string }>
 }
 
-type InterviewStep = "landing" | "captcha" | "screenout" | "interview" | "demographics" | "completed"
+type InterviewStep = "screenout" | "interview" | "demographics" | "completed"
 
 function mapBackendCampaignToCampaign(backend: any): Campaign {
   return {
     id: backend.id,
-    researchName: backend.campaign_name || backend.researchName || "",
-    campaignDescription: backend.campaign_description || "",
-    customerName: backend.customer_name || "",
-    screenoutUrl: backend.screenout_url || "",
-    qualityUrl: backend.quality_url || "",
-    completedUrl: backend.completed_url || "",
-    questions: backend.questions?.map((q: any) => ({ 
-      id: q.id, 
-      text: q.text, 
-      time_limit_sec: q.time_limit_sec || 60 
-    })) || [],
+    researchName: backend.campaign_name,
+    campaignDescription: backend.campaign_description,
+    customerName: backend.customer_name,
+    screenoutUrl: backend.screenout_url,
+    qualityUrl: backend.quality_url,
+    completedUrl: backend.completed_url,
+    questions: backend.questions || [],
     demographicFields: backend.demographic_fields || [],
     screenoutQuestions: backend.screenout_questions || [],
   }
+}
+
+// Helper function to generate a unique participant ID
+function generateParticipantId(): string {
+  return `sayit_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
 }
 
 export default function ShoutItOutInterviewPage() {
   const params = useParams()
   const searchParams = useSearchParams()
   const campaignId = params.campaignId as string
-  const participantId = searchParams.get('uid')
+  // For tell-us campaigns, we don't require uid in URL - it will be generated
+  const urlParticipantId = searchParams.get('uid')
   const [campaign, setCampaign] = useState<Campaign | null>(null)
-  const [currentStep, setCurrentStep] = useState<InterviewStep>("landing")
+  const [currentStep, setCurrentStep] = useState<InterviewStep>("interview")
   const [demographicsData, setDemographicsData] = useState<Record<string, any>>({})
   const [screenoutData, setScreenoutData] = useState<Record<string, string>>({})
   const [isLoading, setIsLoading] = useState(true)
-  const [captchaVerified, setCaptchaVerified] = useState(false)
+  const [generatedParticipantId, setGeneratedParticipantId] = useState<string | null>(null)
+
+  // Use either URL participant ID (for backward compatibility) or generated one
+  const participantId = urlParticipantId || generatedParticipantId
 
   useEffect(() => {
     const fetchCampaign = async () => {
-      if (!campaignId || !participantId) {
+      if (!campaignId) {
         setIsLoading(false);
-        console.error("Campaign ID or Participant ID is missing.");
+        console.error("Campaign ID is missing.");
         return;
       }
       try {
@@ -79,7 +84,28 @@ export default function ShoutItOutInterviewPage() {
         });
         if (response.ok) {
           const data = await response.json();
-          setCampaign(mapBackendCampaignToCampaign(data));
+          console.log('=== CAMPAIGN DATA LOADED ===')
+          console.log('Raw campaign data:', data)
+          console.log('Demographic fields in raw data:', data.demographic_fields)
+          console.log('Questions in raw data:', data.questions)
+          
+          const mappedCampaign = mapBackendCampaignToCampaign(data);
+          console.log('Mapped campaign:', mappedCampaign)
+          console.log('Mapped demographic fields:', mappedCampaign.demographicFields)
+          
+          setCampaign(mappedCampaign);
+          // Generate participant ID immediately when campaign loads
+          if (!generatedParticipantId && !urlParticipantId) {
+            const newParticipantId = generateParticipantId()
+            setGeneratedParticipantId(newParticipantId)
+            console.log('Generated participant ID:', newParticipantId)
+          }
+          // Check if we should start with screenout or interview
+          if (data.screenout_questions && data.screenout_questions.length > 0) {
+            setCurrentStep("screenout")
+          } else {
+            setCurrentStep("interview")
+          }
         } else {
           console.error("Campaign not found from API, status:", response.status);
           setCampaign(null);
@@ -93,19 +119,7 @@ export default function ShoutItOutInterviewPage() {
     };
 
     fetchCampaign();
-  }, [campaignId, participantId]);
-
-  const handleCaptchaVerify = (isValid: boolean) => {
-    setCaptchaVerified(isValid)
-    if (isValid) {
-      // Check if there are screenout questions, otherwise go directly to interview
-      if (campaign?.screenoutQuestions && campaign.screenoutQuestions.length > 0) {
-        setCurrentStep("screenout")
-      } else {
-        setCurrentStep("interview")
-      }
-    }
-  }
+  }, [campaignId, generatedParticipantId, urlParticipantId]);
 
   const handleScreenoutSubmit = async (data: Record<string, string>) => {
     setScreenoutData(data)
@@ -117,7 +131,7 @@ export default function ShoutItOutInterviewPage() {
 
     if (isScreenedOut && campaign?.screenoutUrl) {
       if (!participantId) {
-        console.error('Participant ID is missing from URL')
+        console.error('Participant ID is missing')
         return
       }
 
@@ -160,21 +174,30 @@ export default function ShoutItOutInterviewPage() {
   }
 
   const handleInterviewComplete = async () => {
+    console.log('=== INTERVIEW COMPLETE HANDLER ===')
+    console.log('Campaign demographic fields:', campaign?.demographicFields)
+    console.log('Demographic fields length:', campaign?.demographicFields?.length)
+    
     // For tell-us, go to demographics after interview
     if (campaign?.demographicFields && campaign.demographicFields.length > 0) {
+      console.log('✅ Going to demographics step')
       setCurrentStep("demographics")
     } else {
+      console.log('❌ No demographic fields, completing interview directly')
       // If no demographics, complete the interview
       await submitInterviewData()
     }
   }
 
   const handleDemographicsSubmit = async (data: Record<string, any>) => {
+    
     setDemographicsData(data)
-    await submitInterviewData()
+    await submitInterviewData(data) // Pass the data directly
   }
 
-  const submitInterviewData = async () => {
+  const submitInterviewData = async (demographicsOverride?: Record<string, any>) => {
+    const demographicsToUse = demographicsOverride || demographicsData
+    
     if (!participantId || !campaign) {
       console.error('Participant ID or campaign is missing')
       return
@@ -184,7 +207,7 @@ export default function ShoutItOutInterviewPage() {
       const submissionData = {
         campaign_id: campaign.id,
         participant_id: participantId,
-        demographics: demographicsData,
+        demographics: demographicsToUse,
         completed_url: campaign.completedUrl
       }
 
@@ -251,47 +274,13 @@ export default function ShoutItOutInterviewPage() {
     }
   };
 
-  // Individuelle Inhalte für Tell-us Landing Page
-  const landingTitle = "Ihre Meinung zählt"
-  const landingSubtitle = ""
+  // Privacy information for the small card
   const privacyTitle = "Datenschutz & Anonymität"
   const privacyText =
     "Diese Umfrage ist vollständig anonym. Es werden keine personenbezogenen Daten erhoben " +
     "und keine Informationen gespeichert, die Rückschlüsse auf Ihre Identität zulassen. " +
     "Ziel der Befragung ist es, allgemeine Haltungen und Auffassungen zu bestimmten Themen besser zu verstehen. " +
     "Sollten Sie dennoch unbeabsichtigt personenbezogene Angaben machen, werden diese vor der Auswertung entfernt."
-  const stepsRaw = [
-    {
-      title: "Kurze Sicherheitsüberprüfung",
-      description: "Schnelle Verifizierung für optimale Aufnahmequalität.",
-      icon: <Lock className="h-5 w-5 text-gray-600" />,
-    },
-    campaign?.screenoutQuestions && campaign.screenoutQuestions.length > 0
-      ? {
-          title: "Qualifikationsfragen",
-          description: "Kurze Fragen zur Teilnahmeberechtigung.",
-          icon: <CheckCircle className="h-5 w-5 text-gray-600" />,
-        }
-      : null,
-    {
-      title: "Sprachaufnahmen",
-      description: "Ihre Meinung zählt – sprechen Sie frei zu den gestellten Fragen.",
-      icon: <Mic className="h-5 w-5 text-gray-600" />,
-    },
-    campaign?.demographicFields && campaign.demographicFields.length > 0
-      ? {
-          title: "Demographische Fragen am Ende",
-          description: "Einige allgemeine Angaben helfen uns, die Ergebnisse besser einzuordnen.",
-          icon: <Shield className="h-5 w-5 text-gray-600" />,
-        }
-      : null,
-    {
-      title: "Dauer: ca. 2-3 Minuten",
-      description: undefined,
-      icon: <Clock className="h-5 w-5 text-gray-500" />,
-    },
-  ];
-  const steps = stepsRaw.filter((s): s is NonNullable<typeof s> => Boolean(s));
 
   if (isLoading) {
     return (
@@ -304,7 +293,7 @@ export default function ShoutItOutInterviewPage() {
     )
   }
 
-  if (!campaign || !participantId) {
+  if (!campaign) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Card className="w-full max-w-md">
@@ -317,57 +306,66 @@ export default function ShoutItOutInterviewPage() {
     )
   }
 
-  if (currentStep === "landing") {
-    return (
-      <LandingPage
-        icon={<Mic className="h-10 w-10 text-gray-600" />}
-        title={landingTitle}
-        subtitle={landingSubtitle}
-        privacyTitle={privacyTitle}
-        privacyText={privacyText}
-        steps={steps}
-        onStart={() => setCurrentStep("captcha")}
-        startLabel="Weiter"
-        buttonClassName="bg-black hover:bg-neutral-800 text-white"
-        buttonBelowCard={true}
-      />
-    )
-  }
-
-  if (currentStep === "captcha") {
+  if (currentStep === "screenout") {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="w-full max-w-md">
-          <Captcha onVerify={handleCaptchaVerify} />
+        <div className="w-full max-w-2xl space-y-4">
+          <ScreenoutForm
+            questions={campaign.screenoutQuestions}
+            onSubmit={handleScreenoutSubmit}
+          />
+          {/* Privacy Card */}
+          <Card className="bg-gray-50 border-gray-200">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                <Shield className="h-4 w-4 text-gray-500" />
+                {privacyTitle}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <p className="text-xs text-gray-600 leading-relaxed">
+                {privacyText}
+              </p>
+            </CardContent>
+          </Card>
         </div>
       </div>
     )
   }
 
-  if (currentStep === "screenout") {
-    return (
-      <ScreenoutForm
-        questions={campaign.screenoutQuestions}
-        onSubmit={handleScreenoutSubmit}
-      />
-    )
-  }
-
   if (currentStep === "interview") {
     return (
-      <VoiceInterview
-        questions={campaign.questions}
-        campaignId={campaign.id}
-        participantId={participantId}
-        onComplete={handleInterviewComplete}
-      />
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="w-full max-w-2xl space-y-4">
+          <VoiceInterview
+            questions={campaign.questions}
+            campaignId={campaign.id}
+            participantId={participantId!}
+            onComplete={handleInterviewComplete}
+          />
+          {/* Privacy Card */}
+          <Card className="bg-gray-50 border-gray-200">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                <Shield className="h-4 w-4 text-gray-500" />
+                {privacyTitle}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <p className="text-xs text-gray-600 leading-relaxed">
+                {privacyText}
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     )
   }
 
   if (currentStep === "demographics") {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="w-full max-w-2xl">
+        <div className="w-full max-w-2xl space-y-4">
           <Card>
             <CardHeader className="text-center">
               <CardTitle>Fast geschafft!</CardTitle>
@@ -381,6 +379,20 @@ export default function ShoutItOutInterviewPage() {
                 fields={campaign.demographicFields}
                 onSubmit={handleDemographicsSubmit}
               />
+            </CardContent>
+          </Card>
+          {/* Privacy Card */}
+          <Card className="bg-gray-50 border-gray-200">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                <Shield className="h-4 w-4 text-gray-500" />
+                {privacyTitle}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <p className="text-xs text-gray-600 leading-relaxed">
+                {privacyText}
+              </p>
             </CardContent>
           </Card>
         </div>

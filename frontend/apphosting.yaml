@@ -1,0 +1,68 @@
+---
+# Settings for Backend (on Cloud Run).
+# See https://firebase.google.com/docs/app-hosting/configure#cloud-run
+runConfig:
+  minInstances: 0
+  # maxInstances: 100
+  # concurrency: 80
+  # cpu: 1
+  # memoryMiB: 512
+# Environment variables and secrets.
+env:
+  # Configure environment variables.
+  # See https://firebase.google.com/docs/app-hosting/configure
+  # #user-defined-environment
+ 
+  - variable: NEXT_PUBLIC_API_KEY
+    value: WOwW-83_SCfJlLdBBZDNtCVN2JDLHPNlhnJU_Ja_Bzc
+    availability:
+      - RUNTIME
+      - BUILD
+  - variable: NEXT_PUBLIC_FIREBASE_API_KEY
+    value: AIzaSyDo0GF5m-3cWyKDPkPRKAhaXbvPf_u5DtY
+    availability:
+      - RUNTIME
+      - BUILD
+  - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+    value: prod-volto-interviews.firebaseapp.com
+    availability:
+      - RUNTIME
+      - BUILD
+  - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+    value: prod-volto-interviews
+    availability:
+      - RUNTIME
+      - BUILD
+  - variable: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+    value: prod-volto-interviews.firebasestorage.app
+    availability:
+      - RUNTIME
+      - BUILD
+  - variable: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+    value: 948300987298
+    availability:
+      - RUNTIME
+      - BUILD
+  - variable: NEXT_PUBLIC_FIREBASE_APP_ID
+    value: 1:948300987298:web:f6e7d573b3df50bf21d0fb
+    availability:
+      - RUNTIME
+      - BUILD
+  - variable: NEXT_PUBLIC_BACKEND_URL
+    value: https://interview-backend-948300987298.europe-west3.run.app
+    availability:
+      - RUNTIME
+      - BUILD
+  - variable: NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
+    value: G-CRRN3FVBSY
+    availability:
+      - RUNTIME
+      - BUILD
+
+
+scripts:
+  buildCommand: next build --no-lint
+  # Grant access to secrets in Cloud Secret Manager.
+  # See https://firebase.google.com/docs/app-hosting/configure#secret-parameters
+  # - variable: MY_SECRET
+  #   secret: mySecretRef
